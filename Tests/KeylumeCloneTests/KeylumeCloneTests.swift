@@ -183,6 +183,11 @@ private func coachingShortcut(title: String = "New Window", key: String = "N") -
     )
 }
 
+@Test func coachingEventStoresNormalizedShortcutValue() {
+    let event = CoachingEvent(shortcut: coachingShortcut(key: "n"), source: .menuBar)
+    #expect(event.normalizedShortcut == "1:N")
+}
+
 @Test func coachingHistoryPersistsAndDeduplicatesByEventID() async throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
     let fileURL = directory.appending(path: "coaching-history.json")

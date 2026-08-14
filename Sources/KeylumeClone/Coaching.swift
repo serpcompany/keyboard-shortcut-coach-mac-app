@@ -73,7 +73,7 @@ struct CoachingEvent: Identifiable, Codable, Hashable, Sendable {
         appName = shortcut.appName
         actionTitle = shortcut.title
         menuPath = shortcut.menuPath
-        normalizedShortcut = "(shortcut.modifiers.rawValue):(shortcut.key.uppercased())"
+        normalizedShortcut = "\(shortcut.modifiers.rawValue):\(shortcut.key.uppercased())"
         shortcutDisplay = shortcut.display
         self.source = source
         dismissalKey = shortcut.dismissalKey
