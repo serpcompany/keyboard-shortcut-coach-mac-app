@@ -6,6 +6,34 @@ private final class KeyablePanel: NSPanel {
 }
 
 @MainActor
+final class PresentationTaskRegistry {
+    private var transitions: [PresentationMode: Task<Void, Never>] = [:]
+    private var dismissals: [PresentationMode: Task<Void, Never>] = [:]
+
+    func replaceTransition(for mode: PresentationMode, with task: Task<Void, Never>) {
+        transitions[mode]?.cancel()
+        transitions[mode] = task
+    }
+
+    func replaceDismissal(for mode: PresentationMode, with task: Task<Void, Never>) {
+        dismissals[mode]?.cancel()
+        dismissals[mode] = task
+    }
+
+    func cancel(for mode: PresentationMode) {
+        transitions.removeValue(forKey: mode)?.cancel()
+        dismissals.removeValue(forKey: mode)?.cancel()
+    }
+
+    func cancelAll() {
+        transitions.values.forEach { $0.cancel() }
+        dismissals.values.forEach { $0.cancel() }
+        transitions.removeAll()
+        dismissals.removeAll()
+    }
+}
+
+@MainActor
 final class WindowPresenter {
     private var onboardingWindow: NSWindow?
     private var settingsWindow: NSWindow?
@@ -14,7 +42,7 @@ final class WindowPresenter {
     private var toastPanel: NSPanel?
     private var toastDismissTask: Task<Void, Never>?
     private var presentationPanels: [PresentationMode: NSPanel] = [:]
-    private var presentationTasks: [PresentationMode: Task<Void, Never>] = [:]
+    private let presentationTasks = PresentationTaskRegistry()
     private var screenObserver: NSObjectProtocol?
 
     init() {
@@ -138,7 +166,7 @@ final class WindowPresenter {
         mode: PresentationMode,
         action: @escaping (CoachingAction) -> Void
     ) -> Bool {
-        presentationTasks[mode]?.cancel()
+        presentationTasks.cancel(for: mode)
         let pointer = appKitPoint(for: event)
         guard let screen = screen(containing: pointer) ?? NSScreen.main else { return false }
 
@@ -159,7 +187,7 @@ final class WindowPresenter {
                 view: AnyView(CoachingShelfView(event: event, style: .compact, action: action)),
                 duration: nil
             ) else { return false }
-            presentationTasks[mode] = Task { [weak self] in
+            let transition = Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(700))
                 guard !Task.isCancelled, let self else { return }
                 _ = self.showTopPanel(
@@ -170,6 +198,7 @@ final class WindowPresenter {
                     duration: 4
                 )
             }
+            presentationTasks.replaceTransition(for: mode, with: transition)
             return true
         case .cursorHalo:
             let size = CGSize(width: 82, height: 82)
@@ -189,7 +218,7 @@ final class WindowPresenter {
                 view: AnyView(CoachingStatusView(event: event, phase: .evaluating)),
                 duration: nil
             ) else { return false }
-            presentationTasks[mode] = Task { [weak self] in
+            let transition = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(1.1))
                 guard !Task.isCancelled, let self else { return }
                 _ = self.showTopPanel(
@@ -200,6 +229,7 @@ final class WindowPresenter {
                     duration: 2.4
                 )
             }
+            presentationTasks.replaceTransition(for: mode, with: transition)
             return true
         case .pointerCard:
             let size = CGSize(width: 370, height: 112)
@@ -223,8 +253,7 @@ final class WindowPresenter {
     }
 
     func dismissPresentationPanels() {
-        presentationTasks.values.forEach { $0.cancel() }
-        presentationTasks.removeAll()
+        presentationTasks.cancelAll()
         presentationPanels.values.forEach { $0.orderOut(nil) }
     }
 
@@ -307,12 +336,12 @@ final class WindowPresenter {
     }
 
     private func scheduleDismiss(_ mode: PresentationMode, after duration: TimeInterval) {
-        presentationTasks[mode]?.cancel()
-        presentationTasks[mode] = Task { [weak self] in
+        let dismissal = Task { [weak self] in
             try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
             self?.presentationPanels[mode]?.orderOut(nil)
         }
+        presentationTasks.replaceDismissal(for: mode, with: dismissal)
     }
 
     private func appKitPoint(for event: CoachingEvent) -> CGPoint {

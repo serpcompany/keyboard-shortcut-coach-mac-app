@@ -200,6 +200,21 @@ private func presentationTestShortcut() -> AppShortcut {
     #expect(machine.phase == .idle)
 }
 
+@MainActor
+@Test func presentationDismissalDoesNotCancelActiveStateTransition() {
+    let registry = PresentationTaskRegistry()
+    let transition = Task<Void, Never> { await Task.yield() }
+    let dismissal = Task<Void, Never> { await Task.yield() }
+
+    registry.replaceTransition(for: .compactExpandedShelf, with: transition)
+    registry.replaceDismissal(for: .compactExpandedShelf, with: dismissal)
+
+    #expect(!transition.isCancelled)
+    registry.cancel(for: .compactExpandedShelf)
+    #expect(transition.isCancelled)
+    #expect(dismissal.isCancelled)
+}
+
 @Test func presentationPolicyFansOutOnceAndSuppressesDuplicates() {
     var policy = PresentationPolicy(cooldown: 15)
     let eventID = UUID()

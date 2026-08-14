@@ -1,0 +1,31 @@
+Exact packaged artifact:
+/Users/devin/dev/repos/clone-keylume-ios-app-issue-5/.build/release/KeylumeClone.app
+
+Accessibility hierarchy observed from the running packaged process:
+
+AXMenuBar
+  AXMenuBarItem subrole=AXMenuExtra title=Keyboard
+    AXMenu
+      AXMenuItem title=Keylume Clone
+      AXMenuItem title=v1.1.2
+      AXMenuItem title=Watching: Finder
+      AXMenuItem title=Analytics…
+      AXMenuItem title=Settings…
+      AXMenuItem title=Presentation Showcase
+        AXMenu
+          AXMenuItem title=Top-center presence
+          AXMenuItem title=Compact → Expanded shelf
+          AXMenuItem title=Cursor opportunity halo
+          AXMenuItem title=Status feedback
+          AXMenuItem title=Pointer-anchored card
+          AXMenuItem title=Actionable decision banner
+          AXMenuItem title=Run All Six Modes
+          AXMenuItem title=Hide Showcase
+      AXMenuItem title=Check for Updates…
+      AXMenuItem title=Quit Keylume Clone
+
+Capture note:
+The menu extra had a zero-sized, culled screen position on this Mac because the
+notched menu bar was already full of unrelated status items. AXPress/AXPick
+returned cannot-complete while culled. No unrelated apps or persistent menu-bar
+layout were changed merely to manufacture a screenshot.
