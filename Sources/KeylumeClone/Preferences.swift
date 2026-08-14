@@ -20,6 +20,14 @@ final class AppPreferences {
         static let quietHoursStart = "quietHoursStart"
         static let quietHoursEnd = "quietHoursEnd"
         static let dismissedShortcuts = "dismissedShortcuts"
+        static let contextualToastEnabled = "contextualToastEnabled"
+        static let nativeNotificationsEnabled = "nativeNotificationsEnabled"
+        static let soundEnabled = "soundEnabled"
+        static let soundVolume = "soundVolume"
+        static let menuUnreadCountEnabled = "menuUnreadCountEnabled"
+        static let menuGreenHighlightEnabled = "menuGreenHighlightEnabled"
+        static let dockBadgeEnabled = "dockBadgeEnabled"
+        static let dockBounceEnabled = "dockBounceEnabled"
         static let onboardingComplete = "hasCompletedOnboarding"
     }
 
@@ -43,6 +51,14 @@ final class AppPreferences {
     var quietHoursStart: Date { didSet { defaults.set(quietHoursStart, forKey: Key.quietHoursStart) } }
     var quietHoursEnd: Date { didSet { defaults.set(quietHoursEnd, forKey: Key.quietHoursEnd) } }
     var dismissedShortcuts: Set<String> { didSet { defaults.set(Array(dismissedShortcuts), forKey: Key.dismissedShortcuts) } }
+    var contextualToastEnabled: Bool { didSet { defaults.set(contextualToastEnabled, forKey: Key.contextualToastEnabled) } }
+    var nativeNotificationsEnabled: Bool { didSet { defaults.set(nativeNotificationsEnabled, forKey: Key.nativeNotificationsEnabled) } }
+    var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: Key.soundEnabled) } }
+    var soundVolume: Double { didSet { defaults.set(soundVolume, forKey: Key.soundVolume) } }
+    var menuUnreadCountEnabled: Bool { didSet { defaults.set(menuUnreadCountEnabled, forKey: Key.menuUnreadCountEnabled) } }
+    var menuGreenHighlightEnabled: Bool { didSet { defaults.set(menuGreenHighlightEnabled, forKey: Key.menuGreenHighlightEnabled) } }
+    var dockBadgeEnabled: Bool { didSet { defaults.set(dockBadgeEnabled, forKey: Key.dockBadgeEnabled) } }
+    var dockBounceEnabled: Bool { didSet { defaults.set(dockBounceEnabled, forKey: Key.dockBounceEnabled) } }
     var onboardingComplete: Bool { didSet { defaults.set(onboardingComplete, forKey: Key.onboardingComplete) } }
     var loginItemError: String?
 
@@ -63,6 +79,14 @@ final class AppPreferences {
         quietHoursStart = defaults.object(forKey: Key.quietHoursStart) as? Date ?? Calendar.current.date(from: DateComponents(hour: 22)) ?? .now
         quietHoursEnd = defaults.object(forKey: Key.quietHoursEnd) as? Date ?? Calendar.current.date(from: DateComponents(hour: 7)) ?? .now
         dismissedShortcuts = Set(defaults.stringArray(forKey: Key.dismissedShortcuts) ?? [])
+        contextualToastEnabled = defaults.object(forKey: Key.contextualToastEnabled) as? Bool ?? true
+        nativeNotificationsEnabled = defaults.bool(forKey: Key.nativeNotificationsEnabled)
+        soundEnabled = defaults.bool(forKey: Key.soundEnabled)
+        soundVolume = defaults.object(forKey: Key.soundVolume) as? Double ?? 0.7
+        menuUnreadCountEnabled = defaults.object(forKey: Key.menuUnreadCountEnabled) as? Bool ?? true
+        menuGreenHighlightEnabled = defaults.object(forKey: Key.menuGreenHighlightEnabled) as? Bool ?? true
+        dockBadgeEnabled = defaults.object(forKey: Key.dockBadgeEnabled) as? Bool ?? true
+        dockBounceEnabled = defaults.object(forKey: Key.dockBounceEnabled) as? Bool ?? true
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
     }
 
@@ -81,6 +105,14 @@ final class AppPreferences {
 
     func dismiss(_ shortcut: AppShortcut) {
         dismissedShortcuts.insert(shortcut.dismissalKey)
+    }
+
+    func dismiss(key: String) {
+        dismissedShortcuts.insert(key)
+    }
+
+    func restore(key: String) {
+        dismissedShortcuts.remove(key)
     }
 
     func isQuiet(at date: Date = .now) -> Bool {

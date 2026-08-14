@@ -10,6 +10,7 @@ final class WindowPresenter {
     private var onboardingWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var analyticsWindow: NSWindow?
+    private var coachingHistoryWindow: NSWindow?
     private var overlayPanel: NSPanel?
     private var toastPanel: NSPanel?
     private var toastDismissTask: Task<Void, Never>?
@@ -32,7 +33,7 @@ final class WindowPresenter {
         if settingsWindow == nil {
             let window = makeWindow(
                 title: "Keylume Clone Settings",
-                size: CGSize(width: 480, height: 440),
+                size: CGSize(width: 520, height: 500),
                 content: SettingsView(model: model)
             )
             window.styleMask.insert(.fullSizeContentView)
@@ -52,6 +53,18 @@ final class WindowPresenter {
             content: AnalyticsDashboardView(model: model)
         )
         analyticsWindow = window
+        present(window)
+    }
+
+    func showCoachingHistory(model: AppModel) {
+        let window = coachingHistoryWindow ?? makeWindow(
+            title: "Coaching History",
+            size: CGSize(width: 820, height: 580),
+            content: CoachingHistoryView(model: model)
+        )
+        window.styleMask.insert(.resizable)
+        window.minSize = CGSize(width: 680, height: 460)
+        coachingHistoryWindow = window
         present(window)
     }
 

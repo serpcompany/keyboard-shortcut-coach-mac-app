@@ -24,6 +24,297 @@ struct StatusMenu: View {
     }
 }
 
+struct MenuBarCoachingLabel: View {
+    let model: AppModel
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(nsImage: MenuBarStatusIcon.make(state: iconState))
+                .accessibilityHidden(true)
+            if model.preferences.menuUnreadCountEnabled, model.unreadCoachingCount > 0 {
+                Text(model.unreadCoachingCount, format: .number)
+                    .monospacedDigit()
+            }
+        }
+        .accessibilityLabel(menuAccessibilityLabel)
+    }
+
+    private var iconState: MenuBarIconState {
+        if model.coachingHistoryError != nil || model.accessibilityStatus != .granted { return .attention }
+        if model.unreadCoachingCount > 0, model.preferences.menuGreenHighlightEnabled { return .unread }
+        return .neutral
+    }
+
+    private var menuAccessibilityLabel: String {
+        if model.coachingHistoryError != nil { return "Keylume Clone, coaching history error" }
+        if model.accessibilityStatus != .granted {
+            return "Keylume Clone, Accessibility permission required, \(model.unreadCoachingCount) unread coaching items"
+        }
+        return model.unreadCoachingCount == 0
+            ? "Keylume Clone, no unread coaching"
+            : "Keylume Clone, \(model.unreadCoachingCount) unread coaching items"
+    }
+}
+
+struct CoachingInboxPopover: View {
+    let model: AppModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shortcut Coaching").font(.headline)
+                    Text(unreadSummary).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Mark All Seen", action: model.markAllCoachingSeen)
+                    .disabled(model.unreadCoachingCount == 0)
+            }
+            .padding()
+            Divider()
+            if let error = model.coachingHistoryError {
+                ContentUnavailableView(
+                    "History unavailable",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
+                .frame(height: 210)
+            } else if model.recentCoachingEvents.isEmpty {
+                ContentUnavailableView(
+                    "No coaching yet",
+                    systemImage: "keyboard",
+                    description: Text("Detected coaching opportunities will stay here.")
+                )
+                .frame(height: 210)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(model.recentCoachingEvents) { event in
+                            CoachingPopoverRow(event: event) {
+                                model.showCoachingHistory(eventID: event.id)
+                            }
+                            Divider()
+                        }
+                    }
+                }
+                .frame(height: 260)
+            }
+            Divider()
+            HStack {
+                Button("Send Test", systemImage: "bell.badge", action: model.sendTestCoachingEvent)
+                Spacer()
+                Button("Open Coaching History…") { model.showCoachingHistory() }
+                    .keyboardShortcut("h", modifiers: [.command, .shift])
+                Button("Settings…", action: model.showSettings)
+            }
+            .padding()
+        }
+        .frame(width: 390)
+    }
+
+    private var unreadSummary: String {
+        model.unreadCoachingCount == 0 ? "You're caught up" : "\(model.unreadCoachingCount) unread"
+    }
+}
+
+private struct CoachingPopoverRow: View {
+    let event: CoachingEvent
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(event.isUnread ? Color.green : Color.clear)
+                    .frame(width: 7, height: 7)
+                    .overlay { Circle().stroke(.tertiary) }
+                    .padding(.top, 6)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(event.actionTitle).font(.headline).lineLimit(1)
+                        Spacer()
+                        Text(event.shortcutDisplay).keycap()
+                    }
+                    Text(event.appName).font(.caption).foregroundStyle(.secondary)
+                    Text(event.timestamp, style: .relative).font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(event.actionTitle), \(event.shortcutDisplay), \(event.appName), \(event.isUnread ? "unread" : "seen")")
+    }
+}
+
+private enum CoachingHistoryScope: String, CaseIterable, Identifiable {
+    case all = "All"
+    case unread = "Unread"
+    case dismissed = "Dismissed"
+    var id: String { rawValue }
+}
+
+struct CoachingHistoryView: View {
+    let model: AppModel
+    @State private var searchText = ""
+    @State private var scope = CoachingHistoryScope.all
+    @State private var application = "All Applications"
+    @State private var showingClearConfirmation = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HistoryToolbar(
+                unreadCount: model.unreadCoachingCount,
+                scope: $scope,
+                application: $application,
+                applications: applications,
+                markAllSeen: model.markAllCoachingSeen,
+                clear: { showingClearConfirmation = true }
+            )
+            Divider()
+            historyContent
+        }
+        .searchable(text: $searchText, placement: .toolbar, prompt: "Search actions or shortcuts")
+        .frame(minWidth: 680, minHeight: 460)
+        .confirmationDialog("Clear Coaching History?", isPresented: $showingClearConfirmation) {
+            Button("Clear History", role: .destructive, action: model.clearCoachingHistory)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the local event history. Permanently dismissed shortcuts stay dismissed.")
+        }
+    }
+
+    @ViewBuilder
+    private var historyContent: some View {
+        if let error = model.coachingHistoryError {
+            ContentUnavailableView("History unavailable", systemImage: "externaldrive.badge.exclamationmark", description: Text(error))
+        } else if filteredEvents.isEmpty {
+            VStack(spacing: 14) {
+                ContentUnavailableView(
+                    searchText.isEmpty ? "No coaching events" : "No matching coaching",
+                    systemImage: searchText.isEmpty ? "keyboard" : "magnifyingglass",
+                    description: Text(searchText.isEmpty ? "Create a local demo event to preview this V1." : "Try a different filter or search.")
+                )
+                if searchText.isEmpty {
+                    Button("Send Test Coaching Event", systemImage: "bell.badge", action: model.sendTestCoachingEvent)
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        } else {
+            List(filteredEvents, selection: selectedEventBinding) { event in
+                CoachingHistoryRow(
+                    event: event,
+                    markSeen: { model.setCoachingEvent(event.id, seen: !event.isUnread) },
+                    dismiss: { model.dismissShortcut(for: event) },
+                    restore: { model.restoreShortcut(for: event) }
+                )
+                .tag(event.id)
+            }
+            .listStyle(.inset)
+        }
+    }
+
+    private var selectedEventBinding: Binding<UUID?> {
+        Binding(get: { model.selectedCoachingEventID }, set: { model.selectedCoachingEventID = $0 })
+    }
+
+    private var applications: [String] {
+        ["All Applications"] + Set(model.coachingEvents.map(\.appName)).sorted()
+    }
+
+    private var filteredEvents: [CoachingEvent] {
+        model.coachingEvents.filter { event in
+            let matchesScope = switch scope {
+            case .all: true
+            case .unread: event.isUnread
+            case .dismissed: event.state == .dismissed
+            }
+            let matchesApplication = application == "All Applications" || event.appName == application
+            let matchesSearch = searchText.isEmpty || event.searchableText.localizedCaseInsensitiveContains(searchText)
+            return matchesScope && matchesApplication && matchesSearch
+        }
+    }
+}
+
+private struct HistoryToolbar: View {
+    let unreadCount: Int
+    @Binding var scope: CoachingHistoryScope
+    @Binding var application: String
+    let applications: [String]
+    let markAllSeen: () -> Void
+    let clear: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Coaching History").font(.title2.bold())
+                Text("\(unreadCount) unread").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Picker("State", selection: $scope) {
+                ForEach(CoachingHistoryScope.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .frame(width: 120)
+            Picker("Application", selection: $application) {
+                ForEach(applications, id: \.self) { Text($0).tag($0) }
+            }
+            .frame(width: 180)
+            Button("Mark All Seen", action: markAllSeen).disabled(unreadCount == 0)
+            Button("Clear…", role: .destructive, action: clear)
+        }
+        .padding()
+    }
+}
+
+private struct CoachingHistoryRow: View {
+    let event: CoachingEvent
+    let markSeen: () -> Void
+    let dismiss: () -> Void
+    let restore: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Circle().fill(event.isUnread ? Color.green : .clear).frame(width: 8, height: 8).overlay { Circle().stroke(.tertiary) }
+                Text(event.actionTitle).font(.headline)
+                Text(event.shortcutDisplay).keycap()
+                Spacer()
+                Text(event.timestamp, format: .dateTime.month().day().hour().minute())
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Text("\(event.appName) · \(event.menuPath.joined(separator: " › "))")
+                .font(.subheadline).foregroundStyle(.secondary)
+            if let toast = event.deliveries[.toast] {
+                Label("Toast: \(toast.outcome.rawValue)", systemImage: deliverySymbol(toast.outcome))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            HStack {
+                Button(event.isUnread ? "Mark Seen" : "Mark Unseen", action: markSeen)
+                if event.state == .dismissed {
+                    Button("Restore Shortcut", action: restore)
+                } else {
+                    Button("Dismiss Shortcut", role: .destructive, action: dismiss)
+                }
+                Spacer()
+                Text(event.source.rawValue).font(.caption2).foregroundStyle(.tertiary)
+            }
+            .buttonStyle(.link)
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func deliverySymbol(_ outcome: CoachingDeliveryOutcome) -> String {
+        switch outcome {
+        case .shown, .stored, .submittedToSystem: "checkmark.circle"
+        case .blockedPermission, .presentationFailed: "exclamationmark.triangle"
+        default: "minus.circle"
+        }
+    }
+}
+
 struct OnboardingView: View {
     let model: AppModel
     @State private var page = 0
@@ -184,6 +475,7 @@ private extension View {
 enum SettingsPane: String, CaseIterable, Identifiable {
     case general = "General"
     case coaching = "Coaching"
+    case notifications = "Notifications"
     case about = "About"
     var id: String { rawValue }
 }
@@ -212,6 +504,7 @@ struct SettingsView: View {
             switch selectedPane {
             case .general: GeneralSettingsPane(model: model, preferences: preferences)
             case .coaching: CoachingSettingsPane(preferences: preferences, reset: model.resetDismissedShortcuts)
+            case .notifications: NotificationSettingsPane(model: model, preferences: preferences)
             case .about: AboutSettingsPane(model: model)
             }
             Spacer(minLength: 0)
@@ -219,7 +512,71 @@ struct SettingsView: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
         .padding(.top, 12)
-        .frame(width: 480, height: 440)
+        .frame(width: 520, height: 500)
+    }
+}
+
+private struct NotificationSettingsPane: View {
+    let model: AppModel
+    @Bindable var preferences: AppPreferences
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Notification & Attention").font(.headline)
+            VStack(spacing: 0) {
+                notificationToggle("Contextual coaching toast", isOn: $preferences.contextualToastEnabled)
+                Divider()
+                HStack {
+                    Text("Native macOS notifications")
+                    Spacer()
+                    Text(model.nativeNotificationStatus).font(.caption).foregroundStyle(.secondary)
+                    if preferences.nativeNotificationsEnabled {
+                        Toggle("Native macOS notifications", isOn: $preferences.nativeNotificationsEnabled)
+                            .labelsHidden().toggleStyle(.switch).controlSize(.mini)
+                    } else {
+                        Button("Enable…", action: model.requestNativeNotificationAuthorization)
+                    }
+                }.settingsRow()
+                Divider()
+                notificationToggle("Notification sound", isOn: $preferences.soundEnabled)
+                if preferences.soundEnabled {
+                    HStack {
+                        Text("Sound volume")
+                        Spacer()
+                        Slider(value: $preferences.soundVolume, in: 0...1)
+                            .frame(width: 150)
+                        Text(preferences.soundVolume, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit().frame(width: 42, alignment: .trailing)
+                    }
+                    .settingsRow()
+                }
+                Divider()
+                notificationToggle("Menu-bar unread count", isOn: $preferences.menuUnreadCountEnabled)
+                Divider()
+                notificationToggle("Green menu-bar highlight", isOn: $preferences.menuGreenHighlightEnabled)
+                Divider()
+                notificationToggle("Dock unread badge", isOn: $preferences.dockBadgeEnabled)
+                    .onChange(of: preferences.dockBadgeEnabled) { model.syncDockBadge() }
+                Divider()
+                notificationToggle("Bounce Dock icon", isOn: $preferences.dockBounceEnabled)
+            }.settingsCard()
+            HStack {
+                Button("Send Test Coaching Event", systemImage: "bell.badge", action: model.sendTestCoachingEvent)
+                    .buttonStyle(.borderedProminent)
+                Button("Notification Settings…", action: model.openNotificationSettings)
+            }
+            Text("Test events stay on this Mac and are not counted as shortcut usage.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func notificationToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Toggle(title, isOn: isOn).labelsHidden().toggleStyle(.switch).controlSize(.mini)
+        }
+        .settingsRow()
     }
 }
 

@@ -14,8 +14,12 @@ final class AppModel {
 
     private let menuReader = MenuReader()
     private let usageStore: UsageStore
+    private let coachingHistoryStore: CoachingHistoryStore
     private let windows = WindowPresenter()
     private let updateChecker: UpdateChecker
+    private let dockAttention = DockAttentionPresenter()
+    private let coachingSound = CoachingSoundPresenter()
+    private let nativeNotifications = NativeNotificationPresenter()
     private var eventMonitor: GlobalEventMonitor!
     private var activationObserver: NSObjectProtocol?
     private var holdTask: Task<Void, Never>?
@@ -30,6 +34,10 @@ final class AppModel {
     var shortcuts: [AppShortcut] = []
     var usageRecords: [UsageRecord] = []
     var analytics: AnalyticsSnapshot = .empty
+    var coachingEvents: [CoachingEvent] = []
+    var coachingHistoryError: String?
+    var selectedCoachingEventID: UUID?
+    var nativeNotificationStatus = "Not requested"
     var updateStatus: UpdateStatus?
     var updateError: String?
 
@@ -37,22 +45,28 @@ final class AppModel {
         preferences: AppPreferences = AppPreferences(),
         license: LicenseManager = LicenseManager(),
         usageStore: UsageStore = UsageStore(),
+        coachingHistoryStore: CoachingHistoryStore = CoachingHistoryStore(),
         updateChecker: UpdateChecker = UpdateChecker()
     ) {
         self.preferences = preferences
         self.license = license
         self.usageStore = usageStore
+        self.coachingHistoryStore = coachingHistoryStore
         self.updateChecker = updateChecker
         eventMonitor = GlobalEventMonitor(menuReader: menuReader) { [weak preferences] in
             preferences?.triggerKey ?? .rightCommand
         }
         configureEventMonitor()
+        nativeNotifications.onEventActivated = { [weak self] id in
+            self?.showCoachingHistory(eventID: id)
+        }
     }
 
     func start() {
         guard !started else { return }
         started = true
-        NSApplication.shared.setActivationPolicy(.accessory)
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.applicationIconImage = CandidateAppIcon.make()
         applyAppearance()
         accessibilityStatus = accessibility.status
         observeApplications()
@@ -60,6 +74,8 @@ final class AppModel {
         startProtectedServicesIfPossible()
         startAccessibilityPolling()
         Task { await loadUsage() }
+        Task { await loadCoachingHistory() }
+        refreshNativeNotificationStatus()
         if preferences.automaticUpdates { checkForUpdatesInBackground() }
 
         if !preferences.onboardingComplete {
@@ -92,12 +108,21 @@ final class AppModel {
 
     func showSettings() { windows.showSettings(model: self) }
     func showAnalytics() { windows.showAnalytics(model: self) }
+    func showCoachingHistory(eventID: UUID? = nil) {
+        selectedCoachingEventID = eventID
+        dockAttention.cancelAttention()
+        windows.showCoachingHistory(model: self)
+    }
 
     func handle(url: URL) {
         guard url.scheme?.lowercased() == "keylumeclone" else { return }
         switch url.host?.lowercased() {
         case "analytics": showAnalytics()
         case "settings": showSettings()
+        case "history":
+            let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "event" })?.value.flatMap(UUID.init(uuidString:))
+            showCoachingHistory(eventID: id)
         default: break
         }
     }
@@ -258,13 +283,8 @@ final class AppModel {
 
     private func menuAction(_ shortcut: AppShortcut) {
         record(shortcut, method: .mouse)
-        guard preferences.coachingEnabled,
-              !preferences.isQuiet(),
-              !preferences.dismissedShortcuts.contains(shortcut.dismissalKey),
-              shouldShowNudge()
-        else { return }
-        windows.showToast(shortcut: shortcut) { [weak self] in
-            self?.preferences.dismiss(shortcut)
+        Task {
+            await createAndDeliverCoachingEvent(shortcut: shortcut, source: .menuBar)
         }
     }
 
@@ -272,13 +292,84 @@ final class AppModel {
     // deterministically without waiting for wall-clock time in UI tests.
     func shouldShowNudge(now: Date = .now) -> Bool {
         nudgeTimestamps.removeAll { now.timeIntervalSince($0) >= 3600 }
-        guard nudgeTimestamps.count < Int(preferences.maxNudgesPerHour) else { return false }
-        if !preferences.alwaysShowNudges,
-           let lastNudgeDate,
-           now.timeIntervalSince(lastNudgeDate) < 15 { return false }
+        let outcome = CoachingPresentationPolicy.toastOutcome(
+            enabled: preferences.coachingEnabled && preferences.contextualToastEnabled,
+            quiet: preferences.isQuiet(at: now),
+            excluded: false,
+            dismissed: false,
+            hourlyCount: nudgeTimestamps.count,
+            hourlyCap: Int(preferences.maxNudgesPerHour),
+            elapsedSinceLast: lastNudgeDate.map { now.timeIntervalSince($0) },
+            alwaysShow: preferences.alwaysShowNudges
+        )
+        guard outcome == .shown else { return false }
         nudgeTimestamps.append(now)
         lastNudgeDate = now
         return true
+    }
+
+    var unreadCoachingCount: Int { coachingEvents.count(where: \.isUnread) }
+    var recentCoachingEvents: [CoachingEvent] { Array(coachingEvents.prefix(6)) }
+
+    func sendTestCoachingEvent() {
+        let shortcut = AppShortcut(
+            appBundleIdentifier: Bundle.main.bundleIdentifier ?? "co.serp.KeylumeClone",
+            appName: "Keylume Clone Demo",
+            category: "Demo",
+            title: "Open Coaching History",
+            key: "H",
+            modifiers: [.command, .shift],
+            menuPath: ["Demo", "Open Coaching History"]
+        )
+        Task { await createAndDeliverCoachingEvent(shortcut: shortcut, source: .test) }
+    }
+
+    func markAllCoachingSeen() {
+        for index in coachingEvents.indices where coachingEvents[index].state == .unread {
+            coachingEvents[index].state = .seen
+        }
+        persistMarkAllSeen()
+    }
+
+    func setCoachingEvent(_ id: UUID, seen: Bool) {
+        setCoachingEventState(id, state: seen ? .seen : .unread)
+    }
+
+    func dismissShortcut(for event: CoachingEvent) {
+        preferences.dismiss(key: event.dismissalKey)
+        setCoachingEventState(event.id, state: .dismissed)
+    }
+
+    func restoreShortcut(for event: CoachingEvent) {
+        preferences.restore(key: event.dismissalKey)
+        setCoachingEventState(event.id, state: .seen)
+    }
+
+    func clearCoachingHistory() {
+        Task {
+            do {
+                coachingEvents = try await coachingHistoryStore.clear()
+                syncDockBadge()
+            } catch {
+                coachingHistoryError = "Unable to clear coaching history: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func requestNativeNotificationAuthorization() {
+        Task {
+            preferences.nativeNotificationsEnabled = await nativeNotifications.requestAuthorization()
+            nativeNotificationStatus = await nativeNotifications.statusLabel()
+        }
+    }
+
+    func refreshNativeNotificationStatus() {
+        Task { nativeNotificationStatus = await nativeNotifications.statusLabel() }
+    }
+
+    func openNotificationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     func execute(_ shortcut: AppShortcut) {
@@ -306,6 +397,111 @@ final class AppModel {
         } catch {
             updateError = "Unable to load usage: \(error.localizedDescription)"
         }
+    }
+
+    private func loadCoachingHistory() async {
+        do {
+            coachingEvents = try await coachingHistoryStore.load()
+            coachingHistoryError = nil
+            syncDockBadge()
+        } catch {
+            coachingHistoryError = "Unable to load coaching history: \(error.localizedDescription)"
+            coachingEvents = []
+            syncDockBadge()
+        }
+    }
+
+    private func createAndDeliverCoachingEvent(shortcut: AppShortcut, source: CoachingEventSource, now: Date = .now) async {
+        var event = CoachingEvent(shortcut: shortcut, source: source, timestamp: now)
+        do {
+            coachingEvents = try await coachingHistoryStore.append(event)
+        } catch {
+            coachingHistoryError = "Unable to save coaching history: \(error.localizedDescription)"
+            return
+        }
+        syncDockBadge()
+
+        nudgeTimestamps.removeAll { now.timeIntervalSince($0) >= 3600 }
+        let toastOutcome = CoachingPresentationPolicy.toastOutcome(
+            enabled: preferences.coachingEnabled && preferences.contextualToastEnabled,
+            quiet: preferences.isQuiet(at: now),
+            excluded: preferences.excludedApps.contains(shortcut.appBundleIdentifier),
+            dismissed: preferences.dismissedShortcuts.contains(shortcut.dismissalKey),
+            hourlyCount: nudgeTimestamps.count,
+            hourlyCap: Int(preferences.maxNudgesPerHour),
+            elapsedSinceLast: lastNudgeDate.map { now.timeIntervalSince($0) },
+            alwaysShow: preferences.alwaysShowNudges
+        )
+        event.deliveries[.toast] = CoachingSurfaceDelivery(outcome: toastOutcome, attemptedAt: now, detail: nil)
+        if toastOutcome == .shown {
+            nudgeTimestamps.append(now)
+            lastNudgeDate = now
+            windows.showToast(shortcut: shortcut) { [weak self] in
+                guard let self else { return }
+                self.dismissShortcut(for: event)
+            }
+        }
+
+        event.deliveries[.menuBar] = CoachingSurfaceDelivery(outcome: .shown, attemptedAt: now, detail: nil)
+        event.deliveries[.dockBadge] = CoachingSurfaceDelivery(
+            outcome: preferences.dockBadgeEnabled ? .shown : .suppressedDisabled,
+            attemptedAt: now,
+            detail: nil
+        )
+        let bounceOutcome = dockAttention.presentIfEligible(now: now, preferences: preferences)
+        event.deliveries[.dockAttention] = CoachingSurfaceDelivery(outcome: bounceOutcome, attemptedAt: now, detail: nil)
+
+        if preferences.nativeNotificationsEnabled {
+            let nativeOutcome = await nativeNotifications.submit(event)
+            event.deliveries[.nativeNotification] = CoachingSurfaceDelivery(
+                outcome: nativeOutcome,
+                attemptedAt: now,
+                detail: nativeOutcome == .submittedToSystem ? "The system accepted the request; visible banner delivery is not observable." : nil
+            )
+        } else {
+            event.deliveries[.nativeNotification] = CoachingSurfaceDelivery(outcome: .suppressedDisabled, attemptedAt: now, detail: nil)
+        }
+        let soundOutcome = preferences.soundEnabled
+            ? coachingSound.play(volume: preferences.soundVolume)
+            : .suppressedDisabled
+        event.deliveries[.sound] = CoachingSurfaceDelivery(outcome: soundOutcome, attemptedAt: now, detail: nil)
+        do {
+            coachingEvents = try await coachingHistoryStore.replace(event)
+            syncDockBadge()
+        } catch {
+            coachingHistoryError = "Unable to update coaching delivery outcomes: \(error.localizedDescription)"
+        }
+    }
+
+    private func setCoachingEventState(_ id: UUID, state: CoachingEventState) {
+        if let index = coachingEvents.firstIndex(where: { $0.id == id }) {
+            coachingEvents[index].state = state
+        }
+        syncDockBadge()
+        Task {
+            do {
+                coachingEvents = try await coachingHistoryStore.setState(id: id, state: state)
+                syncDockBadge()
+            } catch {
+                coachingHistoryError = "Unable to update coaching history: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func persistMarkAllSeen() {
+        syncDockBadge()
+        Task {
+            do {
+                coachingEvents = try await coachingHistoryStore.markAllSeen()
+                syncDockBadge()
+            } catch {
+                coachingHistoryError = "Unable to update coaching history: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func syncDockBadge() {
+        dockAttention.updateBadge(unreadCount: unreadCoachingCount, enabled: preferences.dockBadgeEnabled)
     }
 
     private func applyAppearance() {
