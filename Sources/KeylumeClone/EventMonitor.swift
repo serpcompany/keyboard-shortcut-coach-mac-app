@@ -7,7 +7,7 @@ final class GlobalEventMonitor {
     var onTriggerChanged: ((Bool) -> Void)?
     var onOtherKey: (() -> Void)?
     var onShortcutUsed: ((String, ShortcutModifiers) -> Void)?
-    var onMenuAction: ((AppShortcut) -> Void)?
+    var onMenuAction: ((AppShortcut, CGPoint) -> Void)?
 
     private let menuReader: MenuReader
     private let triggerKey: () -> TriggerKey
@@ -88,7 +88,7 @@ final class GlobalEventMonitor {
             if let shortcut = menuReader.shortcut(at: event.location, application: application) {
                 trackingMenuClick = false
                 trackingApplication = nil
-                onMenuAction?(shortcut)
+                onMenuAction?(shortcut, event.location)
             } else if event.location.y > max(36, NSStatusBar.system.thickness + 4) {
                 trackingMenuClick = false
                 trackingApplication = nil

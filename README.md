@@ -25,3 +25,14 @@ On first launch, grant Accessibility permission when prompted. macOS keys that p
 The parity evidence and current completion gate live in `docs/app-replica/`.
 
 The packaging script produces a universal `arm64`/`x86_64` executable, matching the reference's supported Mac architectures.
+
+## Contextual presentation V1 showcase
+
+This comparison branch adds six original local coaching presentations. Build the exact app artifact, then launch any mode directly without relying on browser/menu detection:
+
+```sh
+zsh scripts/package_app.sh
+open -n .build/release/KeylumeClone.app --args --showcase=all
+```
+
+Individual mode values are `topCenterPresence`, `compactExpandedShelf`, `cursorHalo`, `statusFeedback`, `pointerCard`, and `decisionBanner`. The same previews are available from the menu-bar **Presentation Showcase** submenu and from Settings → Coaching. Preview events traverse the production presentation coordinator but are labeled local previews and do not add usage analytics.

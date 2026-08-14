@@ -15,6 +15,14 @@ struct StatusMenu: View {
         Button("Analytics…", systemImage: "chart.bar", action: model.showAnalytics)
         Button("Settings…", systemImage: "gear", action: model.showSettings)
             .keyboardShortcut(",", modifiers: .command)
+        Menu("Presentation Showcase", systemImage: "sparkles") {
+            ForEach(PresentationMode.allCases) { mode in
+                Button(mode.title) { model.previewPresentation(mode) }
+            }
+            Divider()
+            Button("Run All Six Modes", systemImage: "play.fill", action: model.runPresentationShowcase)
+            Button("Hide Showcase", systemImage: "xmark", action: model.dismissPresentationShowcase)
+        }
         Button("Check for Updates…", systemImage: "arrow.triangle.2.circlepath", action: model.checkForUpdates)
         Divider()
         Label(model.license.state.menuLabel, systemImage: "clock")
@@ -211,7 +219,7 @@ struct SettingsView: View {
 
             switch selectedPane {
             case .general: GeneralSettingsPane(model: model, preferences: preferences)
-            case .coaching: CoachingSettingsPane(preferences: preferences, reset: model.resetDismissedShortcuts)
+            case .coaching: CoachingSettingsPane(model: model, preferences: preferences, reset: model.resetDismissedShortcuts)
             case .about: AboutSettingsPane(model: model)
             }
             Spacer(minLength: 0)
@@ -219,7 +227,7 @@ struct SettingsView: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
         .padding(.top, 12)
-        .frame(width: 480, height: 440)
+        .frame(width: 480, height: 560)
     }
 }
 
@@ -296,10 +304,12 @@ private struct GeneralSettingsPane: View {
 }
 
 private struct CoachingSettingsPane: View {
+    let model: AppModel
     @Bindable var preferences: AppPreferences
     let reset: () -> Void
 
     var body: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             VStack(spacing: 0) {
                 HStack {
@@ -341,7 +351,50 @@ private struct CoachingSettingsPane: View {
                     HStack { Text("Until"); Spacer(); DatePicker("Until", selection: $preferences.quietHoursEnd, displayedComponents: .hourAndMinute).labelsHidden() }.settingsRow()
                 }
             }.settingsCard()
+
+            HStack {
+                Text("Presentation Modes").font(.headline)
+                Spacer()
+                Button("Run All", systemImage: "play.fill", action: model.runPresentationShowcase)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+            Text("These local previews use the real presentation path and do not add analytics.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                presentationRow("Top-center presence", isOn: $preferences.topCenterPresenceEnabled, mode: .topCenterPresence)
+                Divider()
+                presentationRow("Compact → Expanded shelf", isOn: $preferences.compactExpandedShelfEnabled, mode: .compactExpandedShelf)
+                Divider()
+                presentationRow("Cursor opportunity halo", isOn: $preferences.cursorHaloEnabled, mode: .cursorHalo)
+                Divider()
+                presentationRow("Status feedback", isOn: $preferences.statusFeedbackEnabled, mode: .statusFeedback)
+                Divider()
+                presentationRow("Pointer-anchored card", isOn: $preferences.pointerCardEnabled, mode: .pointerCard)
+                Divider()
+                presentationRow("Decision banner", isOn: $preferences.decisionBannerEnabled, mode: .decisionBanner)
+                Divider()
+                Button("Reset presentation defaults", systemImage: "arrow.counterclockwise", action: preferences.resetPresentationDefaults)
+                    .settingsRow()
+            }
+            .settingsCard()
         }
+        .padding(.bottom, 8)
+        }
+    }
+
+    private func presentationRow(_ title: String, isOn: Binding<Bool>, mode: PresentationMode) -> some View {
+        HStack {
+            Toggle(title, isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+            Spacer()
+            Button("Preview") { model.previewPresentation(mode) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+        .settingsRow()
     }
 }
 

@@ -20,6 +20,12 @@ final class AppPreferences {
         static let quietHoursStart = "quietHoursStart"
         static let quietHoursEnd = "quietHoursEnd"
         static let dismissedShortcuts = "dismissedShortcuts"
+        static let topCenterPresenceEnabled = "topCenterPresenceEnabled"
+        static let compactExpandedShelfEnabled = "compactExpandedShelfEnabled"
+        static let cursorHaloEnabled = "cursorHaloEnabled"
+        static let statusFeedbackEnabled = "statusFeedbackEnabled"
+        static let pointerCardEnabled = "pointerCardEnabled"
+        static let decisionBannerEnabled = "decisionBannerEnabled"
         static let onboardingComplete = "hasCompletedOnboarding"
     }
 
@@ -43,6 +49,12 @@ final class AppPreferences {
     var quietHoursStart: Date { didSet { defaults.set(quietHoursStart, forKey: Key.quietHoursStart) } }
     var quietHoursEnd: Date { didSet { defaults.set(quietHoursEnd, forKey: Key.quietHoursEnd) } }
     var dismissedShortcuts: Set<String> { didSet { defaults.set(Array(dismissedShortcuts), forKey: Key.dismissedShortcuts) } }
+    var topCenterPresenceEnabled: Bool { didSet { defaults.set(topCenterPresenceEnabled, forKey: Key.topCenterPresenceEnabled) } }
+    var compactExpandedShelfEnabled: Bool { didSet { defaults.set(compactExpandedShelfEnabled, forKey: Key.compactExpandedShelfEnabled) } }
+    var cursorHaloEnabled: Bool { didSet { defaults.set(cursorHaloEnabled, forKey: Key.cursorHaloEnabled) } }
+    var statusFeedbackEnabled: Bool { didSet { defaults.set(statusFeedbackEnabled, forKey: Key.statusFeedbackEnabled) } }
+    var pointerCardEnabled: Bool { didSet { defaults.set(pointerCardEnabled, forKey: Key.pointerCardEnabled) } }
+    var decisionBannerEnabled: Bool { didSet { defaults.set(decisionBannerEnabled, forKey: Key.decisionBannerEnabled) } }
     var onboardingComplete: Bool { didSet { defaults.set(onboardingComplete, forKey: Key.onboardingComplete) } }
     var loginItemError: String?
 
@@ -63,6 +75,12 @@ final class AppPreferences {
         quietHoursStart = defaults.object(forKey: Key.quietHoursStart) as? Date ?? Calendar.current.date(from: DateComponents(hour: 22)) ?? .now
         quietHoursEnd = defaults.object(forKey: Key.quietHoursEnd) as? Date ?? Calendar.current.date(from: DateComponents(hour: 7)) ?? .now
         dismissedShortcuts = Set(defaults.stringArray(forKey: Key.dismissedShortcuts) ?? [])
+        topCenterPresenceEnabled = defaults.object(forKey: Key.topCenterPresenceEnabled) as? Bool ?? true
+        compactExpandedShelfEnabled = defaults.object(forKey: Key.compactExpandedShelfEnabled) as? Bool ?? true
+        cursorHaloEnabled = defaults.object(forKey: Key.cursorHaloEnabled) as? Bool ?? true
+        statusFeedbackEnabled = defaults.object(forKey: Key.statusFeedbackEnabled) as? Bool ?? true
+        pointerCardEnabled = defaults.object(forKey: Key.pointerCardEnabled) as? Bool ?? false
+        decisionBannerEnabled = defaults.object(forKey: Key.decisionBannerEnabled) as? Bool ?? false
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
     }
 
@@ -81,6 +99,26 @@ final class AppPreferences {
 
     func dismiss(_ shortcut: AppShortcut) {
         dismissedShortcuts.insert(shortcut.dismissalKey)
+    }
+
+    func isPresentationEnabled(_ mode: PresentationMode) -> Bool {
+        switch mode {
+        case .topCenterPresence: topCenterPresenceEnabled
+        case .compactExpandedShelf: compactExpandedShelfEnabled
+        case .cursorHalo: cursorHaloEnabled
+        case .statusFeedback: statusFeedbackEnabled
+        case .pointerCard: pointerCardEnabled
+        case .decisionBanner: decisionBannerEnabled
+        }
+    }
+
+    func resetPresentationDefaults() {
+        topCenterPresenceEnabled = true
+        compactExpandedShelfEnabled = true
+        cursorHaloEnabled = true
+        statusFeedbackEnabled = true
+        pointerCardEnabled = false
+        decisionBannerEnabled = false
     }
 
     func isQuiet(at date: Date = .now) -> Bool {

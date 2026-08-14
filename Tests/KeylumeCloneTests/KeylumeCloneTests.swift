@@ -170,3 +170,141 @@ import Testing
     #expect(GlobalEventMonitor.isDisableNotification(.tapDisabledByUserInput))
     #expect(!GlobalEventMonitor.isDisableNotification(.keyDown))
 }
+
+private func presentationTestShortcut() -> AppShortcut {
+    AppShortcut(
+        appBundleIdentifier: "com.example.Editor",
+        appName: "Editor",
+        category: "File",
+        title: "New Window",
+        key: "N",
+        modifiers: [.command],
+        menuPath: ["File", "New Window"]
+    )
+}
+
+@Test func presentationStateMachineHasBoundedExplicitStates() {
+    var machine = PresentationStateMachine()
+    #expect(machine.phase == .idle)
+    machine.begin()
+    #expect(machine.phase == .evaluating)
+    machine.present()
+    #expect(machine.phase == .presenting)
+    machine.resolve()
+    #expect(machine.phase == .success)
+    machine.pause(reason: "quiet hours")
+    #expect(machine.phase == .paused("quiet hours"))
+    machine.fail(reason: "placement")
+    #expect(machine.phase == .failed("placement"))
+    machine.reset()
+    #expect(machine.phase == .idle)
+}
+
+@Test func presentationPolicyFansOutOnceAndSuppressesDuplicates() {
+    var policy = PresentationPolicy(cooldown: 15)
+    let eventID = UUID()
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    #expect(policy.decision(eventID: eventID, mode: .cursorHalo, now: now, enabled: true, quiet: false) == nil)
+    #expect(policy.decision(eventID: eventID, mode: .pointerCard, now: now, enabled: true, quiet: false) == nil)
+    #expect(policy.decision(eventID: eventID, mode: .cursorHalo, now: now, enabled: true, quiet: false) == .duplicate)
+}
+
+@Test func presentationPolicyHandlesCooldownDisabledAndQuietHours() {
+    var policy = PresentationPolicy(cooldown: 15)
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    #expect(policy.decision(eventID: UUID(), mode: .cursorHalo, now: now, enabled: false, quiet: false) == .disabled)
+    #expect(policy.decision(eventID: UUID(), mode: .cursorHalo, now: now, enabled: true, quiet: true) == .quietHours)
+    #expect(policy.decision(eventID: UUID(), mode: .cursorHalo, now: now, enabled: true, quiet: false) == nil)
+    #expect(policy.decision(eventID: UUID(), mode: .cursorHalo, now: now.addingTimeInterval(5), enabled: true, quiet: false) == .cooldown)
+    #expect(policy.decision(eventID: UUID(), mode: .cursorHalo, now: now.addingTimeInterval(16), enabled: true, quiet: false) == nil)
+}
+
+@Test func pointerPlacementFlipsAtEveryEdgeAndSupportsNegativeOrigins() throws {
+    let visible = CGRect(x: -1920, y: -300, width: 1920, height: 1080)
+    let size = CGSize(width: 360, height: 110)
+    let anchors = [
+        CGPoint(x: visible.minX + 1, y: visible.minY + 1),
+        CGPoint(x: visible.maxX - 1, y: visible.minY + 1),
+        CGPoint(x: visible.minX + 1, y: visible.maxY - 1),
+        CGPoint(x: visible.maxX - 1, y: visible.maxY - 1)
+    ]
+
+    for anchor in anchors {
+        let frame = try #require(PresentationPlacement.pointerCard(anchor: anchor, size: size, visibleFrame: visible))
+        #expect(frame.minX >= visible.minX)
+        #expect(frame.maxX <= visible.maxX)
+        #expect(frame.minY >= visible.minY)
+        #expect(frame.maxY <= visible.maxY)
+        #expect(!frame.contains(anchor))
+    }
+}
+
+@Test func placementFailsWhenDisplayCannotSafelyFitSurface() {
+    let tiny = CGRect(x: 0, y: 0, width: 200, height: 100)
+    #expect(PresentationPlacement.topCenter(size: CGSize(width: 300, height: 50), visibleFrame: tiny) == nil)
+    #expect(PresentationPlacement.pointerCard(anchor: CGPoint(x: 50, y: 50), size: CGSize(width: 300, height: 80), visibleFrame: tiny) == nil)
+}
+
+@Test func topCenterPlacementUsesRequestedDisplay() throws {
+    let visible = CGRect(x: 1500, y: 200, width: 1200, height: 800)
+    let frame = try #require(PresentationPlacement.topCenter(size: CGSize(width: 400, height: 100), visibleFrame: visible, topInset: 16))
+    #expect(frame.midX == visible.midX)
+    #expect(frame.maxY == visible.maxY - 16)
+}
+
+@Test func actionableBannerDecisionsAreTypedAndDeterministic() {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    var deferred = CoachingDecisionState()
+    deferred.apply(.notNow, now: now)
+    #expect(deferred.isUnread)
+    #expect(deferred.deferredUntil == now.addingTimeInterval(3600))
+
+    var practiced = CoachingDecisionState()
+    practiced.apply(.practiceShortcut, now: now)
+    #expect(!practiced.isUnread)
+
+    var suppressed = CoachingDecisionState()
+    suppressed.apply(.stopSuggesting, now: now)
+    #expect(suppressed.isSuppressed)
+    #expect(!suppressed.isUnread)
+    #expect(PresentationSemantics.decisionActionOrder == [.practiceShortcut, .notNow, .gotIt, .stopSuggesting])
+}
+
+@Test func presentationAccessibilitySemanticsIncludeStateActionAndShortcut() {
+    let event = CoachingEvent(
+        shortcut: presentationTestShortcut(),
+        pointerLocation: .zero,
+        isLocalPreview: true
+    )
+    let label = PresentationSemantics.label(for: event, phase: .permissionRequired)
+    #expect(label.contains("Accessibility permission required"))
+    #expect(label.contains("New Window"))
+    #expect(label.contains("⌘N"))
+    #expect(CoachingAction.stopSuggesting.title == "Stop Suggesting")
+}
+
+@MainActor
+@Test func presentationPreferencesPersistAndResetToSafeDefaults() {
+    let suite = "KeylumeCloneTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let preferences = AppPreferences(defaults: defaults)
+    preferences.pointerCardEnabled = true
+    preferences.decisionBannerEnabled = true
+    preferences.cursorHaloEnabled = false
+
+    let reloaded = AppPreferences(defaults: defaults)
+    #expect(reloaded.pointerCardEnabled)
+    #expect(reloaded.decisionBannerEnabled)
+    #expect(!reloaded.cursorHaloEnabled)
+
+    reloaded.resetPresentationDefaults()
+    #expect(reloaded.topCenterPresenceEnabled)
+    #expect(reloaded.compactExpandedShelfEnabled)
+    #expect(reloaded.cursorHaloEnabled)
+    #expect(reloaded.statusFeedbackEnabled)
+    #expect(!reloaded.pointerCardEnabled)
+    #expect(!reloaded.decisionBannerEnabled)
+}

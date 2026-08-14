@@ -15,6 +15,7 @@ final class AppModel {
     private let menuReader = MenuReader()
     private let usageStore: UsageStore
     private let windows = WindowPresenter()
+    private var presentationCoordinator: PresentationCoordinator!
     private let updateChecker: UpdateChecker
     private var eventMonitor: GlobalEventMonitor!
     private var activationObserver: NSObjectProtocol?
@@ -46,6 +47,15 @@ final class AppModel {
         eventMonitor = GlobalEventMonitor(menuReader: menuReader) { [weak preferences] in
             preferences?.triggerKey ?? .rightCommand
         }
+        presentationCoordinator = PresentationCoordinator(
+            presenter: windows,
+            preferences: preferences,
+            dismissShortcut: { [weak preferences] shortcut in preferences?.dismiss(shortcut) },
+            openSettings: { [weak windows, weak self] in
+                guard let self else { return }
+                windows?.showSettings(model: self)
+            }
+        )
         configureEventMonitor()
     }
 
@@ -61,6 +71,7 @@ final class AppModel {
         startAccessibilityPolling()
         Task { await loadUsage() }
         if preferences.automaticUpdates { checkForUpdatesInBackground() }
+        runLaunchShowcaseIfRequested()
 
         if !preferences.onboardingComplete {
             Task {
@@ -192,8 +203,8 @@ final class AppModel {
         eventMonitor.onShortcutUsed = { [weak self] key, modifiers in
             Task { @MainActor in self?.shortcutUsed(key: key, modifiers: modifiers) }
         }
-        eventMonitor.onMenuAction = { [weak self] shortcut in
-            Task { @MainActor in self?.menuAction(shortcut) }
+        eventMonitor.onMenuAction = { [weak self] shortcut, pointer in
+            Task { @MainActor in self?.menuAction(shortcut, pointer: pointer) }
         }
     }
 
@@ -256,15 +267,58 @@ final class AppModel {
         record(shortcut, method: .keyboard)
     }
 
-    private func menuAction(_ shortcut: AppShortcut) {
+    private func menuAction(_ shortcut: AppShortcut, pointer: CGPoint) {
         record(shortcut, method: .mouse)
         guard preferences.coachingEnabled,
               !preferences.isQuiet(),
               !preferences.dismissedShortcuts.contains(shortcut.dismissalKey),
               shouldShowNudge()
         else { return }
-        windows.showToast(shortcut: shortcut) { [weak self] in
-            self?.preferences.dismiss(shortcut)
+        let event = CoachingEvent(
+            shortcut: shortcut,
+            pointerLocation: pointer,
+            pointerCoordinateSpace: .quartz
+        )
+        windows.showToast(shortcut: shortcut) { [weak self] in self?.preferences.dismiss(shortcut) }
+        presentationCoordinator.presentEnabledModes(for: event)
+    }
+
+    func previewPresentation(_ mode: PresentationMode) {
+        presentationCoordinator.present(makePreviewEvent(), mode: mode, preview: true)
+    }
+
+    func runPresentationShowcase() {
+        presentationCoordinator.runShowcase(event: makePreviewEvent())
+    }
+
+    func dismissPresentationShowcase() {
+        windows.dismissPresentationPanels()
+    }
+
+    private func makePreviewEvent() -> CoachingEvent {
+        let shortcut = shortcuts.first ?? AppShortcut(
+            appBundleIdentifier: "co.serp.presentation-preview",
+            appName: activeApplicationName == "No active app" ? "Current App" : activeApplicationName,
+            category: "File",
+            title: "Open a New Window",
+            key: "N",
+            modifiers: [.command],
+            menuPath: ["File", "Open a New Window"]
+        )
+        return CoachingEvent(shortcut: shortcut, pointerLocation: NSEvent.mouseLocation, isLocalPreview: true)
+    }
+
+    private func runLaunchShowcaseIfRequested() {
+        guard let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--showcase=") }) else { return }
+        let value = String(argument.dropFirst("--showcase=".count))
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard let self else { return }
+            if value == "all" {
+                runPresentationShowcase()
+            } else if let mode = PresentationMode(rawValue: value) {
+                previewPresentation(mode)
+            }
         }
     }
 
