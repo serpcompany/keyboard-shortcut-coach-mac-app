@@ -13,8 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install pinned XcodeGen
+        env:
+          XCODEGEN_VERSION: 2.44.1
+        run: |
+          mkdir -p "$RUNNER_TEMP/xcodegen-bin"
+          curl --fail --location --silent --show-error \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip" \
+            --output "$RUNNER_TEMP/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-bin"
+          echo "$RUNNER_TEMP/xcodegen-bin" >> "$GITHUB_PATH"
 
       - name: Regenerate project
         run: xcodegen generate
@@ -44,4 +52,3 @@ jobs:
 
       - name: Check repository diff
         run: git diff --check
-
