@@ -1,0 +1,9 @@
+refs/heads/archive/pre-project-evidence-2026-08-16|31b6a6a74073d8f6cd4fd716efaf8234ce68d926|2026-08-16T00:31:11+09:00|archive: preserve comparison lab history
+refs/heads/codex/prototype-8-preproject-ui-comparison-lab|292fe99849aa0499136082ddb2469c96d47ade4d|2026-08-16T00:04:06+09:00|prototype: add named native demo runner
+refs/heads/feat/4-gitify-coaching-inbox|60e3ca3e9eb369d1e2c00c098590156c284e73f3|2026-08-15T07:12:32+09:00|fix: make coaching status states reviewable
+refs/heads/feat/5-heyclicky-presentation-modes|ec844dc83d543e91fcf858acab1ae860a832cdb5|2026-08-15T07:31:06+09:00|fix(presentation): preserve transitions and add evidence gallery
+refs/heads/main|6cfe4ecc549675493e086825572b79badba13757|2026-08-15T02:19:28+09:00|feat: build clean-room Keylume macOS clone
+refs/remotes/origin/codex/prototype-8-preproject-ui-comparison-lab|292fe99849aa0499136082ddb2469c96d47ade4d|2026-08-16T00:04:06+09:00|prototype: add named native demo runner
+refs/remotes/origin/feat/4-gitify-coaching-inbox|60e3ca3e9eb369d1e2c00c098590156c284e73f3|2026-08-15T07:12:32+09:00|fix: make coaching status states reviewable
+refs/remotes/origin/feat/5-heyclicky-presentation-modes|ec844dc83d543e91fcf858acab1ae860a832cdb5|2026-08-15T07:31:06+09:00|fix(presentation): preserve transitions and add evidence gallery
+refs/remotes/origin/main|6cfe4ecc549675493e086825572b79badba13757|2026-08-15T02:19:28+09:00|feat: build clean-room Keylume macOS clone

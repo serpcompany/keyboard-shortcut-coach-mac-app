@@ -1,0 +1,11 @@
+31b6a6a74073d8f6cd4fd716efaf8234ce68d926|ed72b03c55f4f03d2ebcbc22a2d3800b48eb790d 292fe99849aa0499136082ddb2469c96d47ade4d|2026-08-16T00:31:11+09:00|devinschumacher|archive: preserve comparison lab history
+ed72b03c55f4f03d2ebcbc22a2d3800b48eb790d|5ccdb501f470dae51b30cdfdd387b1d0577d1ad8 ec844dc83d543e91fcf858acab1ae860a832cdb5|2026-08-16T00:31:11+09:00|devinschumacher|archive: preserve HeyClicky experiment history
+5ccdb501f470dae51b30cdfdd387b1d0577d1ad8|6cfe4ecc549675493e086825572b79badba13757 60e3ca3e9eb369d1e2c00c098590156c284e73f3|2026-08-16T00:31:11+09:00|devinschumacher|archive: preserve Gitify experiment history
+292fe99849aa0499136082ddb2469c96d47ade4d|577f9c6211d25055cf2e8fca5160b7739b9140e7|2026-08-16T00:04:06+09:00|devinschumacher|prototype: add named native demo runner
+577f9c6211d25055cf2e8fca5160b7739b9140e7|6cfe4ecc549675493e086825572b79badba13757|2026-08-15T23:36:59+09:00|devinschumacher|prototype: add live UI comparison lab
+ec844dc83d543e91fcf858acab1ae860a832cdb5|8a1783f34c99ff548af775926388a2b82c566f93|2026-08-15T07:31:06+09:00|devinschumacher|fix(presentation): preserve transitions and add evidence gallery
+60e3ca3e9eb369d1e2c00c098590156c284e73f3|ae3e8aea93f1322e898cbe39f12763b11a405149|2026-08-15T07:12:32+09:00|devinschumacher|fix: make coaching status states reviewable
+ae3e8aea93f1322e898cbe39f12763b11a405149|6cfe4ecc549675493e086825572b79badba13757|2026-08-15T06:48:27+09:00|devinschumacher|feat: add recoverable coaching inbox
+8a1783f34c99ff548af775926388a2b82c566f93|6cfe4ecc549675493e086825572b79badba13757|2026-08-15T06:44:39+09:00|devinschumacher|feat: add contextual coaching presentation showcase
+6cfe4ecc549675493e086825572b79badba13757|b8be5121a9b77413714e0ca09e09b457462c3a0f|2026-08-15T02:19:28+09:00|devinschumacher|feat: build clean-room Keylume macOS clone
+b8be5121a9b77413714e0ca09e09b457462c3a0f||2026-08-15T00:25:49+09:00|devinschumacher|first
