@@ -1,0 +1,151 @@
+import AppKit
+import SwiftUI
+
+@MainActor
+final class PresentationWindowController {
+    private var panels: [NotificationChannel: NSPanel] = [:]
+    private var dismissalTasks: [NotificationChannel: Task<Void, Never>] = [:]
+
+    func show(event: CoachingEvent, style: NotificationChannel) {
+        guard style != .nativeBanner,
+              style != .dockBadge,
+              style != .dockBounce,
+              style != .sound else { return }
+
+        dismissalTasks[style]?.cancel()
+        panels[style]?.orderOut(nil)
+
+        let size = panelSize(for: style)
+        let panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .statusBar
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = style != .cursorHalo
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.hidesOnDeactivate = false
+        panel.isMovable = false
+        panel.contentView = NSHostingView(rootView: CoachingPresentationView(
+            event: event,
+            style: style,
+            onDismiss: { [weak panel] in panel?.orderOut(nil) }
+        ))
+        panel.setFrameOrigin(origin(for: style, size: size, event: event))
+        panel.orderFrontRegardless()
+        panels[style] = panel
+
+        dismissalTasks[style] = Task { [weak self, weak panel] in
+            let delay: UInt64 = style == .decisionBanner ? 8_000_000_000 : 4_000_000_000
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled else { return }
+            panel?.orderOut(nil)
+            self?.panels[style] = nil
+        }
+    }
+
+    private func panelSize(for style: NotificationChannel) -> NSSize {
+        switch style {
+        case .topRightToast: NSSize(width: 360, height: 92)
+        case .topCenterShelf: NSSize(width: 500, height: 112)
+        case .cursorHalo: NSSize(width: 120, height: 120)
+        case .pointerCard: NSSize(width: 320, height: 92)
+        case .statusFeedback: NSSize(width: 300, height: 76)
+        case .decisionBanner: NSSize(width: 700, height: 128)
+        default: NSSize(width: 360, height: 92)
+        }
+    }
+
+    private func origin(for style: NotificationChannel, size: NSSize, event: CoachingEvent) -> NSPoint {
+        let screen = NSScreen.main ?? NSScreen.screens[0]
+        let visible = screen.visibleFrame
+        let pointer = event.pointerX.flatMap { x in
+            event.pointerY.map { y in NSPoint(x: x, y: screen.frame.maxY - y) }
+        } ?? NSEvent.mouseLocation
+
+        switch style {
+        case .topRightToast:
+            return NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20)
+        case .topCenterShelf, .decisionBanner, .statusFeedback:
+            return NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - 16)
+        case .cursorHalo:
+            return NSPoint(x: pointer.x - size.width / 2, y: pointer.y - size.height / 2)
+        case .pointerCard:
+            let x = min(max(pointer.x + 18, visible.minX), visible.maxX - size.width)
+            let y = min(max(pointer.y - size.height / 2, visible.minY), visible.maxY - size.height)
+            return NSPoint(x: x, y: y)
+        default:
+            return NSPoint(x: visible.midX - size.width / 2, y: visible.maxY - size.height - 16)
+        }
+    }
+}
+
+private struct CoachingPresentationView: View {
+    let event: CoachingEvent
+    let style: NotificationChannel
+    let onDismiss: () -> Void
+    @State private var statusCompleted = false
+
+    var body: some View {
+        Group {
+            if style == .cursorHalo {
+                ZStack {
+                    Circle().stroke(.green.opacity(0.35), lineWidth: 12)
+                    Circle().stroke(.green, lineWidth: 3)
+                    Text(event.shortcut).font(.headline.monospaced()).padding(8).background(.regularMaterial, in: Capsule())
+                }
+                .padding(8)
+            } else if style == .decisionBanner {
+                HStack(spacing: 16) {
+                    Image(systemName: "keyboard.badge.ellipsis").font(.title)
+                    coachingCopy
+                    Spacer()
+                    Button("Not now", action: onDismiss)
+                    Button("Got it", action: onDismiss).buttonStyle(.borderedProminent)
+                }
+                .padding(18)
+                .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 18))
+            } else {
+                HStack(spacing: 14) {
+                    Image(systemName: statusImage)
+                        .font(.title2)
+                        .foregroundStyle(.green)
+                    coachingCopy
+                    Spacer(minLength: 8)
+                    Text(event.shortcut)
+                        .font(.title3.bold().monospaced())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                }
+                .padding(16)
+                .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .padding(4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Shortcut coaching. \(event.actionTitle). Try \(event.shortcut) next time.")
+        .task {
+            guard style == .statusFeedback else { return }
+            try? await Task.sleep(for: .milliseconds(700))
+            statusCompleted = true
+        }
+    }
+
+    private var coachingCopy: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(event.coachingTitle).font(.headline)
+            Text("\(event.actionTitle) · \(event.applicationName)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private var statusImage: String {
+        style == .statusFeedback && !statusCompleted ? "ellipsis.circle" : style.systemImage
+    }
+}

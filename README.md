@@ -1,27 +1,21 @@
-# Keylume Clone
+# Shortcut Coach
 
-An independent clean-room macOS implementation of the observable Keylume 1.1.2 workflows. It is a menu-bar utility that reads shortcuts exposed through the macOS Accessibility API, shows a searchable shortcut overlay, detects mouse use of menu commands, offers coaching nudges, and records local usage analytics.
+A fresh macOS foundation for teaching keyboard shortcuts after users perform actions manually.
 
-The candidate intentionally uses its own bundle identifier (`co.serp.KeylumeClone`), URL scheme (`keylumeclone:`), local license format, and update-feed boundary. It does not contain Keylume code, signing identity, private services, or secrets.
+The earlier clone and UI experiments are preserved as pre-project evidence on branch `archive/pre-project-evidence-2026-08-16` and tag `milestone/pre-project-evidence-2026-08-16`. They are not implementation dependencies.
 
-## Build and package
+## Develop
 
 ```sh
-swift test
-zsh scripts/package_app.sh
-open .build/release/KeylumeClone.app
+xcodegen generate
+open ShortcutCoach.xcodeproj
 ```
 
-For a stable macOS Accessibility grant across rebuilds, pass a local signing identity as the second argument, for example `zsh scripts/package_app.sh release "Apple Development: Your Name (TEAMID)"`. Ad-hoc signing is the portable fallback.
+Choose the **ShortcutCoach** scheme and press Run. Running through Xcode keeps one stable Debug bundle and signing identity so macOS Accessibility permission is not invalidated by post-build mutation or ad-hoc re-signing.
 
-On first launch, grant Accessibility permission when prompted. macOS keys that permission to the signed candidate artifact, so rebuilding may require removing and re-adding the app in System Settings.
+## Verify
 
-## Local data
+```sh
+xcodebuild -project ShortcutCoach.xcodeproj -scheme ShortcutCoach -configuration Debug -derivedDataPath .derived test
+```
 
-- Preferences and trial state: `co.serp.KeylumeClone` user defaults
-- Usage analytics: `~/Library/Application Support/KeylumeClone/usage.json`
-- Network: none by default; update checks use only `KEYLUME_CLONE_UPDATE_FEED` when explicitly configured
-
-The parity evidence and current completion gate live in `docs/app-replica/`.
-
-The packaging script produces a universal `arm64`/`x86_64` executable, matching the reference's supported Mac architectures.

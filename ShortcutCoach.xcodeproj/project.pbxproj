@@ -1,0 +1,511 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05BAB09A6FAAF9B7F0E616B2 /* CoachingEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3986AA8853EDD7E760B8126A /* CoachingEvent.swift */; };
+		1E00D695FC593281300B5F45 /* PresentationWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E158002C796F0864DF4D793A /* PresentationWindowController.swift */; };
+		3E25C61714B010B2D3607A65 /* SystemChannelAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68409EEF706862F873949570 /* SystemChannelAdapters.swift */; };
+		5388306DEF14FB7B8EC80B27 /* ShortcutFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E3A92A0BBD535F29AA0D5E9 /* ShortcutFormatter.swift */; };
+		6081F0AA40A9C8082E1E50C7 /* NotificationDeliveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B963877BBE1613D7E6E24A2F /* NotificationDeliveryService.swift */; };
+		86197DFCC18E730E1B0B84B5 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97768A70C4D57BD5905CE3DC /* SettingsRootView.swift */; };
+		A22903253477ED1A64C3113C /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF7AA2C927D3A9058364C2C /* AppPreferences.swift */; };
+		B317C202962657576CFFE0DC /* AppPresenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0F387ACCE0484AD67811B /* AppPresenceController.swift */; };
+		C1117D21BBC582E53DD359DE /* ShortcutCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8B4D190618367BA621B7CF /* ShortcutCoachApp.swift */; };
+		C81119E1F7F70E43ABE75DEB /* InboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9B8850F2DAEA4EDD0BF199 /* InboxStore.swift */; };
+		D6966695EC4E56335A11FFAF /* ShortcutCoachTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C3BE62A5770F3422B712AB /* ShortcutCoachTests.swift */; };
+		DA57BC1B8DDF3CA1DD9E2698 /* ManualActionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A9D7797C7E214D4E4FF312 /* ManualActionDetector.swift */; };
+		DCFA4A670AFAE1743719C822 /* MenuInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24CFA6D97F785036FD69386 /* MenuInboxView.swift */; };
+		E52EF43B81AF38DAE8D3BD30 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84A91F5AE30F3E5A3FBD9677 /* AppModel.swift */; };
+		E62A7878ACDB6B46A6EA6904 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC12F127AC8E98CF915B2EA /* SharedViews.swift */; };
+		F0754568677780A66B755C23 /* NotificationChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2927CCC862E22D1AC42C66 /* NotificationChannel.swift */; };
+		FD7B7E6EE90D61A4D423DB22 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47F77F3153BC7533CAF6DC99 /* AppDelegate.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6B025EB14A0EB92E40665509 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BD02B4A426707C454123BC68 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D032F9EC3A22451EAE2E86A4;
+			remoteInfo = ShortcutCoach;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		12C3BE62A5770F3422B712AB /* ShortcutCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutCoachTests.swift; sourceTree = "<group>"; };
+		2E3A92A0BBD535F29AA0D5E9 /* ShortcutFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutFormatter.swift; sourceTree = "<group>"; };
+		3986AA8853EDD7E760B8126A /* CoachingEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingEvent.swift; sourceTree = "<group>"; };
+		3CF7AA2C927D3A9058364C2C /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
+		47F77F3153BC7533CAF6DC99 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		49A9D7797C7E214D4E4FF312 /* ManualActionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualActionDetector.swift; sourceTree = "<group>"; };
+		4A8B4D190618367BA621B7CF /* ShortcutCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutCoachApp.swift; sourceTree = "<group>"; };
+		4A9B8850F2DAEA4EDD0BF199 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
+		68409EEF706862F873949570 /* SystemChannelAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemChannelAdapters.swift; sourceTree = "<group>"; };
+		84A91F5AE30F3E5A3FBD9677 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		97768A70C4D57BD5905CE3DC /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
+		AA2927CCC862E22D1AC42C66 /* NotificationChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationChannel.swift; sourceTree = "<group>"; };
+		B24CFA6D97F785036FD69386 /* MenuInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuInboxView.swift; sourceTree = "<group>"; };
+		B963877BBE1613D7E6E24A2F /* NotificationDeliveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDeliveryService.swift; sourceTree = "<group>"; };
+		BCDB24CD03A0EA39B63430C9 /* ShortcutCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShortcutCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5B0F387ACCE0484AD67811B /* AppPresenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresenceController.swift; sourceTree = "<group>"; };
+		D11B008EA020DFFF72D34B73 /* ShortcutCoachTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShortcutCoachTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E158002C796F0864DF4D793A /* PresentationWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresentationWindowController.swift; sourceTree = "<group>"; };
+		FFC12F127AC8E98CF915B2EA /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		3DC635A23716A048B624AE33 /* Delivery */ = {
+			isa = PBXGroup;
+			children = (
+				B963877BBE1613D7E6E24A2F /* NotificationDeliveryService.swift */,
+				E158002C796F0864DF4D793A /* PresentationWindowController.swift */,
+				68409EEF706862F873949570 /* SystemChannelAdapters.swift */,
+			);
+			path = Delivery;
+			sourceTree = "<group>";
+		};
+		449390054CD53BFE34D0F170 /* Detection */ = {
+			isa = PBXGroup;
+			children = (
+				49A9D7797C7E214D4E4FF312 /* ManualActionDetector.swift */,
+			);
+			path = Detection;
+			sourceTree = "<group>";
+		};
+		4E95F225288DCF603971BB22 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B24CFA6D97F785036FD69386 /* MenuInboxView.swift */,
+				97768A70C4D57BD5905CE3DC /* SettingsRootView.swift */,
+				FFC12F127AC8E98CF915B2EA /* SharedViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		5120AA66A6201F729B66246E /* App */ = {
+			isa = PBXGroup;
+			children = (
+				47F77F3153BC7533CAF6DC99 /* AppDelegate.swift */,
+				84A91F5AE30F3E5A3FBD9677 /* AppModel.swift */,
+				4A8B4D190618367BA621B7CF /* ShortcutCoachApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		5431A37AD5FB61FAB4255754 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				3986AA8853EDD7E760B8126A /* CoachingEvent.swift */,
+				AA2927CCC862E22D1AC42C66 /* NotificationChannel.swift */,
+				2E3A92A0BBD535F29AA0D5E9 /* ShortcutFormatter.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		90D6FC7543D51033A4923D94 /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (
+				3CF7AA2C927D3A9058364C2C /* AppPreferences.swift */,
+				C5B0F387ACCE0484AD67811B /* AppPresenceController.swift */,
+				4A9B8850F2DAEA4EDD0BF199 /* InboxStore.swift */,
+			);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		9F01E195A33C0EAE7416BAF7 /* ShortcutCoachTests */ = {
+			isa = PBXGroup;
+			children = (
+				12C3BE62A5770F3422B712AB /* ShortcutCoachTests.swift */,
+			);
+			path = ShortcutCoachTests;
+			sourceTree = "<group>";
+		};
+		B9CAE9FAAF8991C106490BD1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BCDB24CD03A0EA39B63430C9 /* ShortcutCoach.app */,
+				D11B008EA020DFFF72D34B73 /* ShortcutCoachTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D722EB76C53D9C4895FFEE46 /* ShortcutCoach */ = {
+			isa = PBXGroup;
+			children = (
+				5120AA66A6201F729B66246E /* App */,
+				3DC635A23716A048B624AE33 /* Delivery */,
+				449390054CD53BFE34D0F170 /* Detection */,
+				5431A37AD5FB61FAB4255754 /* Domain */,
+				90D6FC7543D51033A4923D94 /* Infrastructure */,
+				4E95F225288DCF603971BB22 /* Views */,
+			);
+			path = ShortcutCoach;
+			sourceTree = "<group>";
+		};
+		DC35FCD1CFC92D9CF7C10873 = {
+			isa = PBXGroup;
+			children = (
+				D722EB76C53D9C4895FFEE46 /* ShortcutCoach */,
+				9F01E195A33C0EAE7416BAF7 /* ShortcutCoachTests */,
+				B9CAE9FAAF8991C106490BD1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9B0F3B7E6E84DC493BBA5850 /* ShortcutCoachTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A24FEB0AE84E7B5951434968 /* Build configuration list for PBXNativeTarget "ShortcutCoachTests" */;
+			buildPhases = (
+				F20EEA7FDC20A225F676B5CA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				32DF52D201D3D3ED577B3C22 /* PBXTargetDependency */,
+			);
+			name = ShortcutCoachTests;
+			packageProductDependencies = (
+			);
+			productName = ShortcutCoachTests;
+			productReference = D11B008EA020DFFF72D34B73 /* ShortcutCoachTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D032F9EC3A22451EAE2E86A4 /* ShortcutCoach */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 66D41F02F4AD9A00927AED0E /* Build configuration list for PBXNativeTarget "ShortcutCoach" */;
+			buildPhases = (
+				59BD93CDD7F8DF88098D3B44 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShortcutCoach;
+			packageProductDependencies = (
+			);
+			productName = ShortcutCoach;
+			productReference = BCDB24CD03A0EA39B63430C9 /* ShortcutCoach.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BD02B4A426707C454123BC68 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					9B0F3B7E6E84DC493BBA5850 = {
+						DevelopmentTeam = 847HR8U8D9;
+						ProvisioningStyle = Manual;
+					};
+					D032F9EC3A22451EAE2E86A4 = {
+						DevelopmentTeam = 847HR8U8D9;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 309AF5F1256E5BE19F525CA3 /* Build configuration list for PBXProject "ShortcutCoach" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DC35FCD1CFC92D9CF7C10873;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D032F9EC3A22451EAE2E86A4 /* ShortcutCoach */,
+				9B0F3B7E6E84DC493BBA5850 /* ShortcutCoachTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		59BD93CDD7F8DF88098D3B44 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD7B7E6EE90D61A4D423DB22 /* AppDelegate.swift in Sources */,
+				E52EF43B81AF38DAE8D3BD30 /* AppModel.swift in Sources */,
+				A22903253477ED1A64C3113C /* AppPreferences.swift in Sources */,
+				B317C202962657576CFFE0DC /* AppPresenceController.swift in Sources */,
+				05BAB09A6FAAF9B7F0E616B2 /* CoachingEvent.swift in Sources */,
+				C81119E1F7F70E43ABE75DEB /* InboxStore.swift in Sources */,
+				DA57BC1B8DDF3CA1DD9E2698 /* ManualActionDetector.swift in Sources */,
+				DCFA4A670AFAE1743719C822 /* MenuInboxView.swift in Sources */,
+				F0754568677780A66B755C23 /* NotificationChannel.swift in Sources */,
+				6081F0AA40A9C8082E1E50C7 /* NotificationDeliveryService.swift in Sources */,
+				1E00D695FC593281300B5F45 /* PresentationWindowController.swift in Sources */,
+				86197DFCC18E730E1B0B84B5 /* SettingsRootView.swift in Sources */,
+				E62A7878ACDB6B46A6EA6904 /* SharedViews.swift in Sources */,
+				C1117D21BBC582E53DD359DE /* ShortcutCoachApp.swift in Sources */,
+				5388306DEF14FB7B8EC80B27 /* ShortcutFormatter.swift in Sources */,
+				3E25C61714B010B2D3607A65 /* SystemChannelAdapters.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F20EEA7FDC20A225F676B5CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6966695EC4E56335A11FFAF /* ShortcutCoachTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		32DF52D201D3D3ED577B3C22 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D032F9EC3A22451EAE2E86A4 /* ShortcutCoach */;
+			targetProxy = 6B025EB14A0EB92E40665509 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0E5FEE24462AC3CAB22AA27E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application: Matthew Schumacher (847HR8U8D9)";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 847HR8U8D9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		15B19796C366D7FFB9BAD19E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Shortcut Coach";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach;
+				PRODUCT_NAME = ShortcutCoach;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		31DE6F92D0DC8E0A2C881F5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Shortcut Coach";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach;
+				PRODUCT_NAME = ShortcutCoach;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		3DF1FE72DF249A6975F58454 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShortcutCoach.app/Contents/MacOS/ShortcutCoach";
+			};
+			name = Release;
+		};
+		75F47F84D6B277B0C7D7FF79 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Developer ID Application: Matthew Schumacher (847HR8U8D9)";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 847HR8U8D9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+		D52035286F29889AD3FD3649 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShortcutCoach.app/Contents/MacOS/ShortcutCoach";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		309AF5F1256E5BE19F525CA3 /* Build configuration list for PBXProject "ShortcutCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E5FEE24462AC3CAB22AA27E /* Debug */,
+				75F47F84D6B277B0C7D7FF79 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		66D41F02F4AD9A00927AED0E /* Build configuration list for PBXNativeTarget "ShortcutCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				15B19796C366D7FFB9BAD19E /* Debug */,
+				31DE6F92D0DC8E0A2C881F5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A24FEB0AE84E7B5951434968 /* Build configuration list for PBXNativeTarget "ShortcutCoachTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D52035286F29889AD3FD3649 /* Debug */,
+				3DF1FE72DF249A6975F58454 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BD02B4A426707C454123BC68 /* Project object */;
+}
