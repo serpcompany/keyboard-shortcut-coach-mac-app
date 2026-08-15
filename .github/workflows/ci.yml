@@ -22,12 +22,12 @@ jobs:
             "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip" \
             --output "$RUNNER_TEMP/xcodegen.zip"
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-bin"
-          chmod +x "$RUNNER_TEMP/xcodegen-bin/xcodegen"
-          echo "$RUNNER_TEMP/xcodegen-bin" >> "$GITHUB_PATH"
+          chmod +x "$RUNNER_TEMP/xcodegen-bin/xcodegen/bin/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen-bin/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Regenerate project
         run: |
-          "$RUNNER_TEMP/xcodegen-bin/xcodegen" generate
+          "$RUNNER_TEMP/xcodegen-bin/xcodegen/bin/xcodegen" generate
 
       - name: Verify generated project is current
         run: git diff --exit-code -- ShortcutCoach.xcodeproj
