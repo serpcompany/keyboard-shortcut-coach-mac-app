@@ -1,0 +1,47 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Regenerate project
+        run: xcodegen generate
+
+      - name: Verify generated project is current
+        run: git diff --exit-code -- ShortcutCoach.xcodeproj
+
+      - name: Test
+        run: |
+          xcodebuild \
+            -project ShortcutCoach.xcodeproj \
+            -scheme ShortcutCoach \
+            -configuration Debug \
+            -derivedDataPath .derived \
+            test \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project ShortcutCoach.xcodeproj \
+            -scheme ShortcutCoach \
+            -configuration Debug \
+            -derivedDataPath .derived-ci-build \
+            build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Check repository diff
+        run: git diff --check
+

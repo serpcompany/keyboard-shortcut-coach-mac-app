@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "Shortcut Coach",
+    "version": "0.1.0",
+    "bundleIdentifier": "co.serp.shortcutcoach",
+    "minimumMacOS": "14.0"
+  },
+  "baseline": {
+    "status": "mvp",
+    "manualDetectorProof": {
+      "status": "verified",
+      "application": "Finder",
+      "action": "New Finder Window",
+      "shortcut": "⌘N",
+      "evidence": "docs/evidence/foundation/README.md"
+    },
+    "capabilities": [
+      {"id": "durable-inbox", "status": "manual-runtime-verified"},
+      {"id": "menu-bar-inbox", "status": "implemented"},
+      {"id": "notification-channel-selection", "status": "unit-tested"},
+      {"id": "top-right-toast", "status": "manual-runtime-verified"},
+      {"id": "dock-and-switcher-policy", "status": "manual-runtime-verified"},
+      {"id": "native-banner", "status": "implemented"},
+      {"id": "top-center-shelf", "status": "implemented"},
+      {"id": "cursor-halo", "status": "implemented"},
+      {"id": "pointer-card", "status": "implemented"},
+      {"id": "status-feedback", "status": "implemented"},
+      {"id": "decision-banner", "status": "implemented"},
+      {"id": "dock-badge", "status": "synthetic-runtime-verified"},
+      {"id": "dock-bounce", "status": "implemented"},
+      {"id": "sound", "status": "implemented"}
+    ],
+    "knownGaps": [
+      "Chrome tab-click detection",
+      "non-menu control detection",
+      "broad application compatibility",
+      "visual acceptance of every channel and combination",
+      "notarized distribution and updates"
+    ]
+  }
+}
