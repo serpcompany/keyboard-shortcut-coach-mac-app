@@ -40,3 +40,45 @@ dashboard to stop an experiment app.
 
 Tracking: [issue #8](https://github.com/serpcompany/keylume-mac-hotkey-app-clone/issues/8).
 The eventual human comparison decision remains in [issue #7](https://github.com/serpcompany/keylume-mac-hotkey-app-clone/issues/7).
+
+## Native development loop
+
+The companion runner provides an npm-script-like loop for the three actual
+macOS builds:
+
+```sh
+./scripts/dev-demo.sh baseline
+./scripts/dev-demo.sh gitify
+./scripts/dev-demo.sh heyclicky
+```
+
+Each command stops the prior demo, builds the selected worktree in debug mode,
+copies it into this throwaway worktree with an unmistakable name, re-signs it,
+and launches it:
+
+- `Keylume Baseline Demo.app`
+- `Keylume Gitify Demo.app`
+- `Keylume HeyClicky Demo.app`
+
+The generated apps live under `prototypes/preproject-ui-lab/.demo-apps/`, never
+under `/Applications`. They retain the shared candidate bundle identifier so
+the experiments do not create three permanent app identities or require three
+independent notification configurations.
+
+Open a variant's source directly in Xcode with:
+
+```sh
+./scripts/dev-demo.sh xcode gitify
+```
+
+Inspect or stop the active build with `./scripts/dev-demo.sh status` and
+`./scripts/dev-demo.sh stop`. Remove only the generated, clearly named app
+copies with:
+
+```sh
+./scripts/dev-demo.sh clean
+```
+
+The cleanup intentionally preserves Swift's `.build` caches so the next build
+is fast. Those caches can be removed separately later when disk reclamation is
+more important than rebuild speed.
