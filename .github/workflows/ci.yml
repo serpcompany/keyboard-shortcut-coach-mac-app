@@ -26,7 +26,8 @@ jobs:
           echo "$RUNNER_TEMP/xcodegen-bin" >> "$GITHUB_PATH"
 
       - name: Regenerate project
-        run: "$RUNNER_TEMP/xcodegen-bin/xcodegen" generate
+        run: |
+          "$RUNNER_TEMP/xcodegen-bin/xcodegen" generate
 
       - name: Verify generated project is current
         run: git diff --exit-code -- ShortcutCoach.xcodeproj
