@@ -19,7 +19,6 @@
 
 - Decide whether Shortcut Coach is the final name.
 - Create original iconography, menu-bar symbol, colors, copy, and sound.
-- Replace the temporary repository description.
 
 ## 4. Distribution
 
@@ -35,4 +34,3 @@
 - Persistence migration tests.
 - Crash and recovery diagnostics.
 - Performance and memory profiling.
-

@@ -2,7 +2,7 @@
 
 Shortcut Coach is a native macOS app that notices supported commands performed with the mouse and teaches the corresponding keyboard shortcut.
 
-This repository is the canonical starting point for product iteration. Earlier clean-room clone work and presentation experiments are preserved as evidence, but they are not implementation dependencies.
+This repository is the canonical Shortcut Coach codebase and starting point for product iteration.
 
 ## Current MVP
 
@@ -24,7 +24,6 @@ See:
 - [Privacy](docs/privacy.md)
 - [Development guide](docs/development.md)
 - [Roadmap](docs/roadmap.md)
-- [Pre-project archive](docs/archive.md)
 
 ## Develop
 

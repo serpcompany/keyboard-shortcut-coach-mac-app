@@ -12,11 +12,10 @@ The menu-bar item is always available. The app uses regular activation policy by
 
 ## Rationale
 
-The prototype branches allowed showcase UI and real detection to diverge. A single delivery seam makes a successful preview meaningful while still requiring separate proof that the detector emits a real event.
+A single delivery seam keeps previews and detected events on the same presentation path while still requiring separate proof that the detector emits a real event.
 
 Supported macOS activation policies couple normal Dock presence with app-switcher presence. The product does not depend on unsupported UI tricks to separate them.
 
 ## Release gate
 
 A build is not considered working until a normally signed app, with valid Accessibility permission, observes a manual action in another app and produces a durable event plus the selected user-visible presentations.
-
