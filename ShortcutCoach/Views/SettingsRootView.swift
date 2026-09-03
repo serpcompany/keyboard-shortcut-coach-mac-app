@@ -118,7 +118,7 @@ private struct PermissionSettingsView: View {
                     Label(model.isAccessibilityTrusted ? "Granted" : "Required", systemImage: model.isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(model.isAccessibilityTrusted ? .green : .orange)
                 }
-                Text("Accessibility permission lets Shortcut Coach identify manually clicked menu commands and read their keyboard shortcuts.")
+                Text("Accessibility permission lets Shortcut Coach identify supported manually clicked menu commands and Chrome tab controls. Processing stays on this Mac.")
                     .foregroundStyle(.secondary)
                 HStack {
                     Button("Request Permission") { model.requestAccessibilityPermission() }
@@ -161,7 +161,7 @@ private struct DiagnosticsView: View {
         switch model.detectorStatus {
         case .stopped: "Stopped"
         case .permissionRequired: "Accessibility permission required"
-        case .monitoring: "Monitoring manual menu-item clicks"
+        case .monitoring: "Monitoring supported manual pointer actions"
         case .failed(let message): "Failed: \(message)"
         }
     }
@@ -212,4 +212,3 @@ private struct HistorySettingsView: View {
         .navigationTitle("History")
     }
 }
-

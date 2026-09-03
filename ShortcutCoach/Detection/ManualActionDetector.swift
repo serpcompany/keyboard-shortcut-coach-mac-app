@@ -1,6 +1,5 @@
-import AppKit
 import ApplicationServices
-import CoreGraphics
+import Foundation
 
 @MainActor
 final class ManualActionDetector {
@@ -13,12 +12,20 @@ final class ManualActionDetector {
 
     private(set) var status: Status = .stopped
     var onEvent: ((CoachingEvent) -> Void)?
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
-    private var lastSignature: String?
-    private var lastEmission = Date.distantPast
+    private let monitor: PointerEventMonitor
+    private let snapshotter: AccessibilitySnapshotter
+    private let chromeAdapter = ChromeActionAdapter()
+    private var correlator = ActionCorrelator()
+    private var generation = 0
+    private var lastMenuSignature: String?
+    private var lastMenuEmission = Date.distantPast
 
     var isAccessibilityTrusted: Bool { AXIsProcessTrusted() }
+
+    init(monitor: PointerEventMonitor = PointerEventMonitor(), snapshotter: AccessibilitySnapshotter = AccessibilitySnapshotter()) {
+        self.monitor = monitor
+        self.snapshotter = snapshotter
+    }
 
     func requestAccessibilityPermission() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -32,83 +39,64 @@ final class ManualActionDetector {
             return
         }
 
-        let mask = CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
-        let callback: CGEventTapCallBack = { _, _, event, userInfo in
-            guard let userInfo else { return Unmanaged.passUnretained(event) }
-            let detector = Unmanaged<ManualActionDetector>.fromOpaque(userInfo).takeUnretainedValue()
-            let location = event.location
-            MainActor.assumeIsolated {
-                detector.inspectElement(at: location)
-            }
-            return Unmanaged.passUnretained(event)
+        monitor.onSample = { [weak self] sample in
+            DispatchQueue.main.async { self?.receive(sample) }
         }
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: mask,
-            callback: callback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
+        monitor.onTapRecovered = { [weak self] in
+            DispatchQueue.main.async { self?.correlator.cancel() }
+        }
+        guard monitor.start() else {
             status = .failed("macOS did not create the Accessibility event monitor")
             return
         }
-
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        eventTap = tap
-        runLoopSource = source
         status = .monitoring
     }
 
     func stop() {
-        if let runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        }
-        if let eventTap { CFMachPortInvalidate(eventTap) }
-        runLoopSource = nil
-        eventTap = nil
+        monitor.stop()
+        correlator.cancel()
+        generation += 1
         status = .stopped
     }
 
-    private func inspectElement(at point: CGPoint) {
-        let systemWide = AXUIElementCreateSystemWide()
-        var element: AXUIElement?
-        guard AXUIElementCopyElementAtPosition(systemWide, Float(point.x), Float(point.y), &element) == .success,
-              let element,
-              stringAttribute(kAXRoleAttribute, from: element) == kAXMenuItemRole as String,
-              let title = stringAttribute(kAXTitleAttribute, from: element),
-              !title.isEmpty,
-              let command = stringAttribute(kAXMenuItemCmdCharAttribute, from: element),
-              !command.isEmpty else { return }
-
-        let appName = NSWorkspace.shared.frontmostApplication?.localizedName ?? "Current app"
-        let shortcut = formattedShortcut(command: command, element: element)
-        let signature = "\(appName)|\(title)|\(shortcut)"
-        guard signature != lastSignature || Date().timeIntervalSince(lastEmission) > 1 else { return }
-        lastSignature = signature
-        lastEmission = Date()
-        onEvent?(CoachingEvent(
-            applicationName: appName,
-            actionTitle: title,
-            shortcut: shortcut,
-            pointerX: point.x,
-            pointerY: point.y
-        ))
-    }
-
-    private func stringAttribute(_ attribute: String, from element: AXUIElement) -> String? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
-        return value as? String
-    }
-
-    private func formattedShortcut(command: String, element: AXUIElement) -> String {
-        var modifiersValue: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXMenuItemCmdModifiersAttribute as CFString, &modifiersValue)
-        let modifiers = (modifiersValue as? NSNumber)?.intValue ?? 0
-        return ShortcutFormatter.format(command: command, modifiers: modifiers)
+    private func receive(_ sample: PointerSample) {
+        switch sample.phase {
+        case .dragged: correlator.markDragged()
+        case .cancelled: correlator.cancel()
+        case .down:
+            let currentGeneration = generation
+            snapshotter.snapshot(at: sample.location) { [weak self] snapshot in
+                guard let self, self.generation == currentGeneration, let snapshot else { return }
+                if let shortcut = snapshot.hit.menuShortcut,
+                   snapshot.hit.role == kAXMenuItemRole as String,
+                   let title = snapshot.hit.title, !title.isEmpty {
+                    let signature = "\(snapshot.applicationName)|\(title)|\(shortcut)"
+                    if signature != self.lastMenuSignature || Date().timeIntervalSince(self.lastMenuEmission) > 1 {
+                        self.lastMenuSignature = signature
+                        self.lastMenuEmission = Date()
+                        self.onEvent?(CoachingEvent(applicationName: snapshot.applicationName, actionTitle: title,
+                                                    shortcut: shortcut, pointerX: sample.location.x, pointerY: sample.location.y))
+                    }
+                } else if let candidate = self.chromeAdapter.classify(snapshot, point: sample.location) {
+                    self.correlator.begin(candidate, at: sample.timestamp, modifiers: sample.modifiers)
+                }
+            }
+        case .up:
+            let currentGeneration = generation
+            snapshotter.snapshot(at: sample.location) { [weak self] upSnapshot in
+                guard let self, self.generation == currentGeneration,
+                      self.correlator.acceptsMouseUp(sample, hit: upSnapshot) else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    self.snapshotter.snapshot(at: sample.location) { [weak self] post in
+                        guard let self, self.generation == currentGeneration, let post else {
+                            self?.correlator.cancel(); return
+                        }
+                        if let event = self.correlator.verify(post: post, at: ProcessInfo.processInfo.systemUptime) {
+                            self.onEvent?(event)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

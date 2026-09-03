@@ -2,9 +2,9 @@
 
 ## Accessibility
 
-Shortcut Coach requires macOS Accessibility permission to identify the menu item under a physical mouse click and read the shortcut metadata exposed by that item.
+Shortcut Coach requires macOS Accessibility permission to identify supported controls under observed mouse input and read the semantic state needed to suggest an equivalent shortcut. Supported controls currently include menu items and a conservative set of Chrome tab-strip controls.
 
-The detector uses a listen-only mouse event tap. It does not modify or suppress the click.
+The detector uses a listen-only mouse event tap. It does not modify or suppress the click. Accessibility snapshots are processed locally and are not transmitted. Chrome tab titles, URLs, page content, profiles, accounts, and browsing history are not stored in characterization fixtures or coaching history.
 
 ## Local data
 
@@ -38,4 +38,3 @@ The MVP has:
 - no product network client.
 
 This is a source-level statement for the MVP baseline, not a permanent policy for future releases. Any future telemetry, sync, account, or update feature requires a new privacy decision and documentation update.
-

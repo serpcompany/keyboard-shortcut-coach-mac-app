@@ -4,7 +4,7 @@
 
 1. Shortcut Coach launches in the Dock, Cmd-Tab, and menu bar.
 2. The user grants Accessibility permission.
-3. The detector observes a supported menu item clicked in another app.
+3. The detector observes a supported menu item or Chrome tab-strip control clicked in another app.
 4. The click becomes one durable CoachingEvent.
 5. The inbox unread count updates.
 6. The delivery module fans the event out to the selected presentation channels.
@@ -49,7 +49,7 @@ Durable inbox recording is mandatory and occurs before transient delivery. Users
 
 ## Detector coverage
 
-The MVP detects clicked Accessibility elements whose role is AXMenuItem and that expose a command character. It formats Shift, Option, Control, and Command modifiers from the system-provided menu metadata.
+The detector reads live shortcut metadata for clicked AXMenuItem elements. For Chrome, a bundle-specific adapter recognizes only characterized New Tab, active-tab Close, and direct tab-selection controls, then emits only after a bounded Accessibility re-query verifies the expected state change. Ambiguous or incomplete Accessibility data is silently suppressed.
 
 Covered:
 
@@ -61,5 +61,4 @@ Not yet covered:
 - Toolbar buttons and other non-menu controls.
 - Context-menu commands that do not expose shortcut metadata.
 - Commands without a keyboard shortcut.
-- Application-specific semantic mappings.
-
+- Application-specific semantic mappings outside the initial Chrome tab-strip slice.

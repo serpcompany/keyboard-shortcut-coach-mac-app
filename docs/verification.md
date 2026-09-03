@@ -29,10 +29,14 @@
 
 Runtime evidence is stored under [docs/evidence/foundation](evidence/foundation/README.md).
 
+## Chrome non-menu detector branch
+
+Issue #10 adds deterministic classification and correlation coverage for Chrome New Tab, selected-tab Close, and direct tab selection, including required negative controls. The checked-in fixture records only sanitized Chrome 153 browser-chrome semantics. Unit tests and a signed build do not prove real-pointer behavior against the live installed Chrome AX tree; every supported action and suppression remains a human acceptance step before merge.
+
 ## Explicitly unproven
 
-- Chrome tab-click and browser-toolbar detection.
-- Non-menu manual controls.
+- Human physical-pointer acceptance of Chrome tab-strip detection.
+- Browser-toolbar controls and non-menu controls outside the initial Chrome tab-strip slice.
 - Broad application compatibility.
 - Native banner authorization and appearance.
 - Dock badge and bounce visual appearance.
@@ -60,4 +64,3 @@ xcodebuild -project ShortcutCoach.xcodeproj \
 codesign --verify --deep --strict --verbose=2 \
   .derived/Build/Products/Debug/ShortcutCoach.app
 ~~~
-

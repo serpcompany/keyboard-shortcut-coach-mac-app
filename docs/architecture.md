@@ -3,7 +3,13 @@
 ## Data flow
 
 ~~~text
-ManualActionDetector
+PointerEventMonitor (listen-only down/up/drag)
+        |
+        v
+AccessibilitySnapshotter (bounded AX context)
+        |
+        v
+ChromeActionAdapter + ActionCorrelator
         |
         v
   CoachingEvent
@@ -17,14 +23,14 @@ NotificationDeliveryService
              native banner / panels / Dock / sound
 ~~~
 
-Synthetic previews and real detector events share NotificationDeliveryService. A preview can prove a presentation adapter, but only a physical action can prove the detector boundary.
+Synthetic previews and real detector events share NotificationDeliveryService. A preview can prove a presentation adapter, but only human-observed pointer input can prove the detector boundary. Software can post Core Graphics events, so the app does not claim cryptographic hardware provenance.
 
 ## Module ownership
 
 | Module | Owns | Does not own |
 | --- | --- | --- |
 | Domain | Coaching event, channels, shortcut formatting, delivery report | UI, storage, macOS APIs |
-| Detection | Accessibility trust and manual menu-item observation | Presentation or history |
+| Detection | Accessibility trust, passive pointer observation, AX snapshots, app rules, and verified postconditions | Presentation or history |
 | Delivery | Durable-first fan-out and per-channel outcomes | Event detection |
 | Infrastructure | Preferences, JSON history, activation policy | Presentation design |
 | Views | Menu inbox and settings surfaces | Detector or persistence implementation |
@@ -46,4 +52,3 @@ macOS supported activation policies couple ordinary Dock presence with Cmd-Tab p
 - Accessory: both hidden.
 
 The menu-bar item remains present in both modes. See [ADR 0001](adr/0001-notification-delivery-and-app-presence.md).
-
