@@ -27,7 +27,7 @@ enum ReleaseLane: String, CaseIterable {
     var supportsManualActionDetection: Bool { self == .full }
     var showsFullVersionCTA: Bool { self == .appStoreLite }
 
-    static let fullVersionURL = URL(string: "https://serp.co/shortcut-coach/")!
+    static let fullVersionURL = URL(string: "https://serpcompany.github.io/shortcut-coach-mac-app/")!
 }
 
 enum ProductIdentity {

@@ -5,4 +5,4 @@ These screenshots were captured from the real sandboxed, Developer ID-signed `Sh
 - `01-shortcut-library.png`: standalone searchable shortcut reference.
 - `02-full-version.png`: disclosed website-only full-version CTA.
 
-They are review evidence, not final App Store upload assets. Re-capture from the exact Apple Distribution archive after the product landing page is live and the App Store record exists.
+They are the reviewed real-app source captures. Run `scripts/generate-lite-app-store-screenshots.sh` to generate deterministic 1280×800 upload assets under `release/screenshots/lite-app-store/`.

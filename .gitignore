@@ -1,6 +1,7 @@
 .build/
 .derived/
 .derived-*/
+.asc/
 .DS_Store
 *.xcuserstate
 xcuserdata/

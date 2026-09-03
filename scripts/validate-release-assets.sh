@@ -10,6 +10,8 @@ asc metadata validate --dir metadata --output table
 asc metadata validate --dir metadata-lite --output table
 scripts/generate-app-store-screenshots.sh
 asc screenshots validate --path release/screenshots/app-store --device-type APP_DESKTOP --output table
+scripts/generate-lite-app-store-screenshots.sh
+asc screenshots validate --path release/screenshots/lite-app-store --device-type APP_DESKTOP --output table
 
 store_icon="brand/generated/app-store/ShortcutCoach-AppStore-1024.png"
 [[ "$(sips -g pixelWidth "$store_icon" | awk '/pixelWidth/ {print $2}')" == "1024" ]]

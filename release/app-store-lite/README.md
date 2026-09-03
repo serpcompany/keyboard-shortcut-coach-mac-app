@@ -27,7 +27,9 @@ xcodebuild \
   build
 ~~~
 
-Before creating its App Store record, verify that `https://serp.co/shortcut-coach/` is live, accurate, and does not auto-download software.
+Archive and export the upload package with the committed `ExportOptions.plist`; it maps `com.serp.shortcutcoach.lite` to the Mac App Store profile explicitly.
+
+Before submission, verify the GitHub Pages landing, privacy, and support URLs are live and accurate. The Lite CTA opens the landing page and does not auto-download software.
 
 ## Apple resources
 
