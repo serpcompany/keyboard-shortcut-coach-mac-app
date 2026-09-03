@@ -4,6 +4,7 @@ import SwiftUI
 struct ShortcutCoachApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
+    @State private var menuBarItemInserted = true
 
     var body: some Scene {
         WindowGroup("Shortcut Coach", id: "main") {
@@ -20,15 +21,16 @@ struct ShortcutCoachApp: App {
             }
         }
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $menuBarItemInserted) {
             MenuInboxView()
                 .environment(model)
                 .task { model.start() }
         } label: {
-            Label(
-                model.unreadCount == 0 ? "Shortcut Coach" : "Shortcut Coach, \(model.unreadCount) unread",
-                systemImage: model.unreadCount == 0 ? "keyboard" : "keyboard.badge.ellipsis"
-            )
+            HStack(spacing: 3) {
+                Image(systemName: model.unreadCount == 0 ? "keyboard" : "keyboard.badge.ellipsis")
+                Text(model.unreadCount == 0 ? "SC" : "\(model.unreadCount)")
+            }
+            .accessibilityLabel(model.unreadCount == 0 ? "Shortcut Coach" : "Shortcut Coach, \(model.unreadCount) unread")
         }
         .menuBarExtraStyle(.window)
     }

@@ -31,12 +31,12 @@ Runtime evidence is stored under [docs/evidence/foundation](evidence/foundation/
 
 ## Chrome non-menu detector branch
 
-Issue #10 adds deterministic classification and correlation coverage for Chrome New Tab, selected-tab Close, and direct tab selection, including required negative controls. The checked-in fixture records only sanitized Chrome 153 browser-chrome semantics. Unit tests and a signed build do not prove real-pointer behavior against the live installed Chrome AX tree; every supported action and suppression remains a human acceptance step before merge.
+Issue #10 adds deterministic classification and correlation coverage for Chrome New Tab, selected-tab Close, direct tab selection, and Settings, including required negative controls. Issues #15 and #16 add production monitors and policy tests for Finder-to-Trash and standard window controls. Unit tests and a signed build do not prove every real-pointer behavior against live application AX trees; each new action remains a human acceptance step before merge.
 
 ## Explicitly unproven
 
-- Human physical-pointer acceptance of Chrome tab-strip detection.
-- Browser-toolbar controls and non-menu controls outside the initial Chrome tab-strip slice.
+- Human physical-pointer acceptance of Chrome Close/Settings, window controls, and Finder-to-Trash detection.
+- Browser-toolbar controls and non-menu controls outside the implemented slices.
 - Broad application compatibility.
 - Native banner authorization and appearance.
 - Dock badge and bounce visual appearance.

@@ -58,6 +58,7 @@ final class AccessibilitySnapshotter {
         guard AXUIElementGetPid(hit, &pid) == .success else { return nil }
         let app = NSRunningApplication(processIdentifier: pid)
         let bundleIdentifier = app?.bundleIdentifier
+        let applicationElement = AXUIElementCreateApplication(pid)
         var ancestors: [(AXUIElement, AXNodeSnapshot)] = []
         var cursor = hit
         for _ in 0..<8 {
@@ -68,26 +69,26 @@ final class AccessibilitySnapshotter {
             if node.role == kAXApplicationRole as String { break }
         }
         let chromeTabs = bundleIdentifier.map(ChromeActionAdapter.bundleIdentifiers.contains) == true
-            ? tabState(hit: hit, ancestors: ancestors) : nil
+            ? tabState(hit: hit, ancestors: ancestors, application: applicationElement) : nil
         return AccessibilitySnapshot(pid: pid, bundleIdentifier: bundleIdentifier,
                                      applicationName: app?.localizedName ?? "Current app",
                                      hit: nodeSnapshot(hit), ancestors: ancestors.map(\.1),
                                      tabs: chromeTabs)
     }
 
-    private func tabState(hit: AXUIElement, ancestors: [(AXUIElement, AXNodeSnapshot)]) -> ChromeTabState? {
-        let candidates = [hit] + ancestors.map(\.0)
+    private func tabState(hit: AXUIElement, ancestors: [(AXUIElement, AXNodeSnapshot)], application: AXUIElement) -> ChromeTabState? {
+        let candidates = [hit] + ancestors.map(\.0) + [application]
         for candidate in candidates {
             if let state = tabState(fromContainer: candidate) { return state }
         }
         for root in candidates.prefix(4) {
             var frontier = children(of: root)
             var visited = 0
-            while !frontier.isEmpty && visited < 80 {
+            while !frontier.isEmpty && visited < 400 {
                 let element = frontier.removeFirst()
                 visited += 1
                 if let state = tabState(fromContainer: element) { return state }
-                if visited < 40 { frontier.append(contentsOf: children(of: element)) }
+                if visited < 300 { frontier.append(contentsOf: children(of: element)) }
             }
         }
         return nil

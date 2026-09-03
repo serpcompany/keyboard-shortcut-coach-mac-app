@@ -4,7 +4,7 @@
 
 1. Shortcut Coach launches in the Dock, Cmd-Tab, and menu bar.
 2. The user grants Accessibility permission.
-3. The detector observes a supported menu item or Chrome tab-strip control clicked in another app.
+3. The detector observes a supported menu item, Chrome control, standard window control, or Finder-to-Trash drag.
 4. The click becomes one durable CoachingEvent.
 5. The inbox unread count updates.
 6. The delivery module fans the event out to the selected presentation channels.
@@ -49,7 +49,7 @@ Durable inbox recording is mandatory and occurs before transient delivery. Users
 
 ## Detector coverage
 
-The detector reads live shortcut metadata for clicked AXMenuItem elements. For Chrome, a bundle-specific adapter recognizes only characterized New Tab, active-tab Close, and direct tab-selection controls, then emits only after a bounded Accessibility re-query verifies the expected state change. Ambiguous or incomplete Accessibility data is silently suppressed.
+The detector reads live shortcut metadata for clicked AXMenuItem elements. Chrome rules recognize characterized New Tab, active-tab Close, direct tab selection, and Settings. Standard window-control rules retain the clicked window and require a close, minimize, or frame-change postcondition. Finder-to-Trash uses a separate cross-process drag monitor and emits only when the Finder source disappears after reaching the Dock Trash target. Ambiguous or incomplete Accessibility data is silently suppressed.
 
 Covered:
 
@@ -57,8 +57,8 @@ Covered:
 
 Not yet covered:
 
-- Chrome or Safari tab clicks.
+- Uncharacterized Chrome or Safari controls.
 - Toolbar buttons and other non-menu controls.
 - Context-menu commands that do not expose shortcut metadata.
 - Commands without a keyboard shortcut.
-- Application-specific semantic mappings outside the initial Chrome tab-strip slice.
+- Application-specific semantic mappings outside the implemented slices.

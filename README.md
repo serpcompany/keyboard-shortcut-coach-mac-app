@@ -6,7 +6,7 @@ This repository is the canonical Shortcut Coach codebase and starting point for 
 
 ## Current MVP
 
-- Detects macOS menu-item clicks and a conservative set of Chrome tab-strip pointer actions after Accessibility permission is granted.
+- Detects macOS menu-item clicks, a conservative set of Chrome controls, standard window controls, and verified Finder-to-Trash drags after Accessibility permission is granted.
 - Records every coaching event in durable local history.
 - Shows an always-available menu-bar coaching inbox with unread state.
 - Provides ten selectable notification channels and per-channel previews.
@@ -14,7 +14,7 @@ This repository is the canonical Shortcut Coach codebase and starting point for 
 - Appears in the Dock and Cmd-Tab by default; one setting hides both while retaining the menu-bar item.
 - Uses one delivery path for both detected and synthetic test events.
 
-The proven end-to-end path is Finder → File → New Finder Window → ⌘N. Chrome New Tab, active-tab Close, and direct tab-selection rules are deterministic-test verified, but still require human physical-pointer acceptance on the target Chrome build. Broad application coverage and visual acceptance of every channel combination remain future work.
+The proven end-to-end paths are Finder → File → New Finder Window → ⌘N and Chrome's New Tab button → ⌘T. Chrome Close/Settings, window controls, and Finder-to-Trash rules are implemented and deterministic-test verified, but still require fresh human physical-pointer acceptance from the signed integration build. Broad application coverage and visual acceptance of every channel combination remain future work.
 
 See:
 

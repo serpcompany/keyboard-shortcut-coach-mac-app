@@ -122,6 +122,53 @@ final class ChromeActionDetectionTests: XCTestCase {
         XCTAssertNil(adapter.classify(disabled, point: .zero))
     }
 
+    func testOrdinaryPointerJitterDoesNotCancelAChromeClick() {
+        let pre = makeSnapshot(
+            hit: node(
+                "new",
+                role: "AXButton",
+                description: "New Tab",
+                actions: ["AXPress"],
+                frame: AXFrameSnapshot(x: 0, y: 0, width: 20, height: 20)
+            ),
+            tabs: tabs(count: 2)
+        )
+        var correlator = ActionCorrelator()
+        correlator.begin(tryCandidate(pre), at: 1, modifiers: [])
+        correlator.observeDrag(to: CGPoint(x: 5.2, y: 5.1))
+
+        XCTAssertTrue(correlator.acceptsMouseUp(sample(.up, x: 5.2, y: 5.1, time: 1.1), hit: pre))
+    }
+
+    func testChromeSettingsMenuItemProducesSettingsCandidate() {
+        let snapshot = makeSnapshot(
+            hit: node("settings", role: "AXMenuItem", title: "Settings", actions: ["AXPress"]),
+            tabs: tabs(count: 2)
+        )
+
+        XCTAssertEqual(
+            adapter.classify(snapshot, point: CGPoint(x: 5, y: 5))?.kind,
+            .chromeSettings(initialTabCount: 2)
+        )
+    }
+
+    func testChromeSettingsRequiresAResultingTabStateChange() {
+        let pre = makeSnapshot(
+            hit: node("settings", role: "AXMenuItem", title: "Settings", actions: ["AXPress"]),
+            tabs: tabs(count: 2)
+        )
+        var correlator = ActionCorrelator()
+        correlator.begin(tryCandidate(pre), at: 1, modifiers: [])
+        XCTAssertTrue(correlator.acceptsMouseUp(sample(.up, time: 1.1), hit: pre))
+        XCTAssertNil(correlator.verify(post: pre, at: 1.2))
+
+        correlator.begin(tryCandidate(pre), at: 2, modifiers: [])
+        XCTAssertTrue(correlator.acceptsMouseUp(sample(.up, time: 2.1), hit: pre))
+        let event = correlator.verify(post: makeSnapshot(hit: pre.hit, tabs: tabs(count: 3)), at: 2.2)
+        XCTAssertEqual(event?.actionTitle, "Settings")
+        XCTAssertEqual(event?.shortcut, "⌘,")
+    }
+
     func testReloadOmniboxAndUnknownButtonsAreSuppressed() {
         for description in ["Reload", "Stop", "Address and search bar", nil] {
             let snapshot = makeSnapshot(hit: node("button", role: "AXButton", description: description, actions: ["AXPress"]), tabs: tabs(count: 2))
@@ -163,10 +210,10 @@ final class ChromeActionDetectionTests: XCTestCase {
                               hit: hit, ancestors: ancestors, tabs: tabs)
     }
 
-    private func node(_ token: String, role: String, description: String? = nil,
+    private func node(_ token: String, role: String, title: String? = nil, description: String? = nil,
                       selected: Bool? = nil, enabled: Bool? = true,
                       actions: [String] = [], frame: AXFrameSnapshot? = AXFrameSnapshot(x: 0, y: 0, width: 20, height: 20)) -> AXNodeSnapshot {
-        AXNodeSnapshot(token: token, role: role, subrole: nil, title: nil,
+        AXNodeSnapshot(token: token, role: role, subrole: nil, title: title,
                        elementDescription: description, identifier: nil, value: selected.map { $0 ? "1" : "0" },
                        selected: selected, enabled: enabled, actions: actions, frame: frame, menuShortcut: nil)
     }

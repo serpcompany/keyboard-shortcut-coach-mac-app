@@ -6,6 +6,7 @@ enum ManualActionKind: Equatable, Sendable {
     case chromeNewTab
     case chromeCloseActiveTab(tabToken: String)
     case chromeSelectTab(tabToken: String, index: Int, tabCount: Int)
+    case chromeSettings(initialTabCount: Int)
 }
 
 struct ManualActionCandidate: Equatable, Sendable {
@@ -35,6 +36,10 @@ struct ChromeActionAdapter: ApplicationActionAdapter {
     func classify(_ snapshot: AccessibilitySnapshot, point: CGPoint) -> ManualActionCandidate? {
         guard let bundle = snapshot.bundleIdentifier, Self.bundleIdentifiers.contains(bundle),
               snapshot.hit.enabled != false, let tabs = snapshot.tabs else { return nil }
+
+        if isSettingsMenuItem(snapshot.hit), snapshot.hit.actions.contains(kAXPressAction as String) {
+            return candidate(.chromeSettings(initialTabCount: tabs.tabs.count), snapshot, point)
+        }
 
         if let tab = tabNode(in: snapshot) {
             if isCloseButton(snapshot.hit) {
@@ -76,6 +81,14 @@ struct ChromeActionAdapter: ApplicationActionAdapter {
         return semantic.contains { value in
             value.contains("closetab") || value.contains("tab-close") || value == "close" || value == "fermer" || value == "schließen"
         }
+    }
+
+    private func isSettingsMenuItem(_ node: AXNodeSnapshot) -> Bool {
+        guard node.role == kAXMenuItemRole as String else { return false }
+        let semantic = [node.identifier, node.elementDescription, node.title]
+            .compactMap { $0?.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+                .trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        return semantic.contains { $0 == "settings" || $0 == "settings…" || $0 == "preferences" || $0 == "preferences…" }
     }
 
     private func candidate(_ kind: ManualActionKind, _ snapshot: AccessibilitySnapshot, _ point: CGPoint) -> ManualActionCandidate {

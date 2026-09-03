@@ -11,6 +11,10 @@ AccessibilitySnapshotter (bounded AX context)
         v
 ChromeActionAdapter + ActionCorrelator
         |
+        +--> StandardWindowControlMonitor (retained-window postconditions)
+        |
+        +--> FinderTrashMonitor (Finder-to-Dock drag postcondition)
+        |
         v
   CoachingEvent
         |

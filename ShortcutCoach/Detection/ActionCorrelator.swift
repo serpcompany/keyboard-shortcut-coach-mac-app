@@ -6,7 +6,7 @@ struct ActionCorrelator {
     let deduplicationWindow: TimeInterval
     private(set) var candidate: ManualActionCandidate?
     private(set) var downTimestamp: TimeInterval = 0
-    private(set) var dragged = false
+    private(set) var dragDistance: CGFloat = 0
     private var lastSignature: String?
     private var lastEmissionTimestamp: TimeInterval = -.infinity
 
@@ -19,14 +19,19 @@ struct ActionCorrelator {
         guard modifiers.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty else { cancel(); return }
         self.candidate = candidate
         downTimestamp = timestamp
-        dragged = false
+        dragDistance = 0
     }
 
-    mutating func markDragged() { dragged = true }
-    mutating func cancel() { candidate = nil; dragged = false }
+    mutating func observeDrag(to point: CGPoint) {
+        guard let candidate else { return }
+        dragDistance = max(dragDistance, hypot(point.x - candidate.point.x, point.y - candidate.point.y))
+    }
+
+    mutating func markDragged() { dragDistance = .infinity }
+    mutating func cancel() { candidate = nil; dragDistance = 0 }
 
     mutating func acceptsMouseUp(_ sample: PointerSample, hit: AccessibilitySnapshot?) -> Bool {
-        guard let candidate, !dragged,
+        guard let candidate, dragDistance <= 4,
               sample.timestamp - downTimestamp <= maximumDuration,
               sample.modifiers.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty,
               candidate.targetFrame?.contains(sample.location) != false,
@@ -50,6 +55,9 @@ struct ActionCorrelator {
         case .chromeSelectTab(let token, let index, let count)
             where postTabs.tabs.count == count && postTabs.tabs.first(where: { $0.token == token })?.selected == true:
             output = ("Select Tab \(index)", ChromeShortcutCatalog.selectTab(index: index))
+        case .chromeSettings(let initialTabCount)
+            where postTabs.tabs.count > initialTabCount:
+            output = ("Settings", "⌘,")
         default: output = nil
         }
         guard let output else { return nil }

@@ -2,9 +2,9 @@
 
 ## Accessibility
 
-Shortcut Coach requires macOS Accessibility permission to identify supported controls under observed mouse input and read the semantic state needed to suggest an equivalent shortcut. Supported controls currently include menu items and a conservative set of Chrome tab-strip controls.
+Shortcut Coach requires macOS Accessibility permission to identify supported controls under observed mouse input and read the semantic state needed to suggest an equivalent shortcut. Supported controls currently include menu items, a conservative set of Chrome controls, standard window controls, and Finder-to-Trash drag endpoints.
 
-The detector uses a listen-only mouse event tap. It does not modify or suppress the click. Accessibility snapshots are processed locally and are not transmitted. Chrome tab titles, URLs, page content, profiles, accounts, and browsing history are not stored in characterization fixtures or coaching history.
+The detector uses a listen-only mouse event tap. It does not modify or suppress the click. Accessibility snapshots are processed locally and are not transmitted. Chrome tab titles, URLs, page content, profiles, accounts, browsing history, Finder item names, and file paths are not added to coaching history.
 
 ## Local data
 
