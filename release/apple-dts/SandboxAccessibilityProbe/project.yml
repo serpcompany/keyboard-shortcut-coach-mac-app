@@ -1,0 +1,25 @@
+name: SandboxAccessibilityProbe
+options:
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: 847HR8U8D9
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Developer ID Application: Matthew Schumacher (847HR8U8D9)"
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  SandboxAccessibilityProbe:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.serp.shortcutcoach.dtsprobe
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Sandbox Accessibility Probe
+        CODE_SIGN_ENTITLEMENTS: SandboxAccessibilityProbe.entitlements
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        ENABLE_APP_SANDBOX: YES

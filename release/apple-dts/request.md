@@ -43,4 +43,4 @@ failed to do a bootstrap look-up: xpc_error=[159: Unknown error: 159]
 
 ## Expected outcome
 
-We need a specific supported architecture for a Mac App Store build, or confirmation that the full product must use Developer ID distribution. A focused sample project and full logs can be supplied in reply to the acknowledgement email.
+We need a specific supported architecture for a Mac App Store build, or confirmation that the full product must use Developer ID distribution. The focused `SandboxAccessibilityProbe` Xcode project is ready, and full logs can be supplied in reply to the acknowledgement email.
