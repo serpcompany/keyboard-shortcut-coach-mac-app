@@ -1,7 +1,7 @@
 {
   "description": "Build faster Mac habits with a searchable shortcut library that stays close in the menu bar. Filter common shortcuts for Finder, Chrome, Safari, and general macOS actions, and preview the coaching presentations available in Shortcut Coach.\n\nShortcut Coach Lite is useful on its own and does not request Accessibility permission or inspect controls in other apps. A clearly labeled Full Version page can open the SERP website to explain the separately distributed real-time coaching app. Nothing is downloaded automatically.",
   "keywords": "shortcuts,keyboard,productivity,macOS,hotkeys,learning,Finder,Chrome",
-  "marketingUrl": "https://serpcompany.github.io/shortcut-coach-mac-app/",
+  "marketingUrl": "https://serpcompany.github.io/keyboard-shortcut-coach-mac-app/",
   "promotionalText": "Keep common Mac shortcuts searchable and close at hand.",
-  "supportUrl": "https://serpcompany.github.io/shortcut-coach-mac-app/support/"
+  "supportUrl": "https://serpcompany.github.io/keyboard-shortcut-coach-mac-app/support/"
 }

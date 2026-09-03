@@ -1,6 +1,6 @@
 {
-  "name": "Shortcut Coach Lite",
-  "subtitle": "A shortcut guide for your Mac",
-  "privacyPolicyUrl": "https://serpcompany.github.io/shortcut-coach-mac-app/privacy/",
+  "name": "Keyboard Shortcut Coach Lite",
+  "subtitle": "A keyboard shortcut trainer",
+  "privacyPolicyUrl": "https://serpcompany.github.io/keyboard-shortcut-coach-mac-app/privacy/",
   "privacyPolicyText": "Shortcut Coach Lite provides a local shortcut library and presentation previews. It does not request Accessibility access, inspect controls in other apps, collect usage analytics, require an account, or transmit personal data. Preferences remain on the Mac and can be cleared by removing the app."
 }

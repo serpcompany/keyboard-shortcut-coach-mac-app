@@ -1,6 +1,6 @@
 # Release publication
 
-Every shipped version has an immutable Git tag and GitHub Release in `serpcompany/shortcut-coach-mac-app`. Read [`release/release-lanes.md`](../../release/release-lanes.md) before choosing a lane.
+Every shipped version has an immutable Git tag and GitHub Release in `serpcompany/keyboard-shortcut-coach-mac-app`. Read [`release/release-lanes.md`](../../release/release-lanes.md) before choosing a lane.
 
 ## Tag names
 
