@@ -34,3 +34,5 @@ The Debug control used the same source, team, bundle ID, and request call but no
 ## Conclusion
 
 This test does not claim that every possible sandbox entitlement request is impossible. It proves that the public-API, sandboxed Release configuration currently specified for Shortcut Coach cannot complete its required clean Accessibility permission flow. Under issue #19's stop condition, App Store upload and submission are blocked. The release fallback is the hardened, unsandboxed Developer ID configuration under `release/developer-id/`.
+
+Before reaching the permission blocker, the same artifact passed the feasible brand/UI checks documented in [`README.md`](README.md): complete Settings navigation, dark menu-bar symbol, status-item Inbox access, Finder and Dock icons, and two real presentation-channel previews. Light menu-bar appearance remains a human check because automated capture did not change the maintainer's global Appearance setting.

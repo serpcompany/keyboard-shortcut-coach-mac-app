@@ -9,8 +9,8 @@ This repository is the canonical Shortcut Coach codebase and starting point for 
 - Detects macOS menu-item clicks, a conservative set of Chrome controls, standard window controls, and verified Finder-to-Trash drags after Accessibility permission is granted.
 - Records every coaching event in durable local history.
 - Shows an always-available menu-bar coaching inbox with unread state.
-- Provides ten selectable notification channels and per-channel previews.
-- Includes a full settings window for history, notification styles, app presence, permissions, and diagnostics.
+- Provides ten selectable presentation channels and per-channel previews.
+- Includes a full settings window for history, presentation channels, app presence, permissions, and diagnostics.
 - Appears in the Dock and Cmd-Tab by default; one setting hides both while retaining the menu-bar item.
 - Uses one delivery path for both detected and synthetic test events.
 

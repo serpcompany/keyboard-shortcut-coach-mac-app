@@ -14,16 +14,11 @@ final class NativeStatusItemController: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.isVisible = true
         if let button = item.button {
-            let image = NSImage(named: ProductIdentity.statusItemImageName)
-            image?.isTemplate = true
-            image?.size = NSSize(width: 17, height: 17)
-            button.image = image
-            button.imagePosition = .imageOnly
-            button.title = ""
-            button.toolTip = ProductIdentity.productName
-            button.setAccessibilityLabel(ProductIdentity.accessibilityName)
-            button.target = self
-            button.action = #selector(togglePopover(_:))
+            StatusItemBranding.configure(
+                button,
+                target: self,
+                action: #selector(togglePopover(_:))
+            )
         }
 
         popover.behavior = .transient

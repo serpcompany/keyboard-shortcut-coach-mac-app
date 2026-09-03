@@ -22,6 +22,10 @@ private final class SpyAdapter: ChannelDelivering {
 
 private enum TestError: Error { case expected }
 
+private final class StatusItemActionTarget: NSObject {
+    @objc func activate(_ sender: NSStatusBarButton) {}
+}
+
 @MainActor
 final class ShortcutCoachTests: XCTestCase {
     func testDeliveryRecordsOnceAndFansOutToSelectedChannels() async {
@@ -126,15 +130,32 @@ final class ShortcutCoachTests: XCTestCase {
         }
     }
 
-    func testSERPProductIdentityConfiguresTheBrandedStatusItem() {
-        XCTAssertEqual(ProductIdentity.bundleIdentifier, "com.serp.shortcutcoach")
+    func testSERPBrandingConfiguresTheActualStatusBarButtonContract() {
         XCTAssertEqual(
             ProductIdentity.legacyBundleIdentifiers,
             ["com.serpcompany.shortcutcoach", "co.serp.shortcutcoach"]
         )
+        let button = NSStatusBarButton(frame: NSRect(x: 0, y: 0, width: 24, height: 24))
+        let target = StatusItemActionTarget()
+
+        StatusItemBranding.configure(
+            button,
+            target: target,
+            action: #selector(StatusItemActionTarget.activate(_:))
+        )
+
         XCTAssertEqual(ProductIdentity.statusItemImageName, "SERPMenuBarMark")
-        XCTAssertEqual(ProductIdentity.accessibilityName, "Shortcut Coach")
-        XCTAssertNotNil(NSImage(named: ProductIdentity.statusItemImageName))
+        XCTAssertNotNil(button.image)
+        XCTAssertEqual(button.image?.isTemplate, true)
+        XCTAssertEqual(button.image?.size, NSSize(width: 17, height: 17))
+        // NSStatusBarButton normalizes .imageOnly to .imageOverlaps. The empty
+        // title is the observable contract that leaves only the image visible.
+        XCTAssertEqual(button.imagePosition, .imageOverlaps)
+        XCTAssertEqual(button.title, "")
+        XCTAssertEqual(button.toolTip, "Shortcut Coach")
+        XCTAssertEqual(button.accessibilityLabel(), "Shortcut Coach")
+        XCTAssertTrue(button.target === target)
+        XCTAssertEqual(button.action, #selector(StatusItemActionTarget.activate(_:)))
     }
 
     func testEveryPresentationChannelHasStableCopyAndIdentity() {

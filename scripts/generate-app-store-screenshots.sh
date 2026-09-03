@@ -10,13 +10,14 @@ for source in "$review_dir"/*.png; do
   [[ -e "$source" ]] || continue
   filename="$(basename "$source")"
   magick "$source" \
-    -resize '1280x800' \
+    -resize '1120x700' \
     -background '#121212' \
     -gravity center \
     -extent 1280x800 \
     -alpha off \
     -colorspace sRGB \
-    -strip \
+    -strip +set date:create +set date:modify \
+    -define png:exclude-chunk=date,time \
     PNG24:"$output_dir/$filename"
 done
 

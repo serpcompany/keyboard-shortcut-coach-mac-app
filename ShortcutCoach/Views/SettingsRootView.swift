@@ -2,7 +2,7 @@ import SwiftUI
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case inbox = "History"
-    case notifications = "Notification Styles"
+    case notifications = "Presentation Channels"
     case presence = "App Presence"
     case permissions = "Permissions"
     case diagnostics = "Diagnostics"
@@ -37,7 +37,7 @@ struct SettingsRootView: View {
             Group {
                 switch selection ?? .notifications {
                 case .inbox: HistorySettingsView()
-                case .notifications: NotificationStylesView()
+                case .notifications: PresentationChannelsView()
                 case .presence: AppPresenceSettingsView()
                 case .permissions: PermissionSettingsView()
                 case .diagnostics: DiagnosticsView()
@@ -82,13 +82,13 @@ private struct AboutView: View {
     }
 }
 
-private struct NotificationStylesView: View {
+private struct PresentationChannelsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         Form {
             Section {
-                Label("Every coaching event is saved to the inbox first. Enable any combination of additional presentation styles.", systemImage: "tray.full")
+                Label("Every coaching event is saved to the inbox first. Enable any combination of additional presentation channels.", systemImage: "tray.full")
                     .foregroundStyle(.secondary)
             }
             Section("Presentation channels") {
@@ -119,7 +119,7 @@ private struct NotificationStylesView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Notification Styles")
+        .navigationTitle("Presentation Channels")
     }
 }
 

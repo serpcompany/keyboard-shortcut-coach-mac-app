@@ -7,7 +7,7 @@ Required review set:
 | ID | Surface | Required state |
 | --- | --- | --- |
 | `01-coaching-inbox` | Menu-bar popover | SERP mark, durable history, unread state |
-| `02-notification-styles` | Main Settings window | Real selectable channel list and previews |
+| `02-presentation-channels` | Main Settings window | Real selectable presentation-channel list and previews |
 | `03-permissions` | Main Settings window | Real Accessibility permission state |
 | `04-diagnostics` | Main Settings window | Real detector and delivery diagnostics |
 | `05-about` | Main Settings window | SERP mark, Shortcut Coach name, version |
@@ -17,9 +17,10 @@ Static UI captures may be reviewed before the sandbox gate. The live-coaching sc
 
 Current truthful sandboxed Release-build captures:
 
-- `review/02-notification-styles.png`
+- `review/01-coaching-inbox.png`
+- `review/02-presentation-channels.png`
 - `review/03-permissions.png` — intentionally shows the clean-install `Required` state
 - `review/04-diagnostics.png` — intentionally records the unpassed Accessibility gate
 - `review/05-about.png`
 
-Run `scripts/generate-app-store-screenshots.sh` to place these real captures without distortion on an opaque 1280×800 canvas under `app-store/`. `asc screenshots validate --device-type APP_DESKTOP` validates that output. Inbox and live-coaching captures remain blocked on the physical Accessibility test and must not be manufactured from synthetic state.
+Run `scripts/generate-app-store-screenshots.sh` to place these real captures without distortion and with visible margins around the complete window/popover on an opaque 1280×800 canvas under `app-store/`. `asc screenshots validate --device-type APP_DESKTOP` validates that output. Live-coaching capture remains blocked on the physical Accessibility test and must not be manufactured from synthetic state.

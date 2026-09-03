@@ -52,7 +52,7 @@ Do not convert an implemented or synthetic status into a broad working claim.
 - The complete suite passes 28 tests.
 - A universal sandboxed Release build passes strict code-sign and static entitlement inspection.
 - The Mac App Store gate is blocked: after a clean Accessibility reset, the sandboxed Release cannot open Apple's Accessibility authorization warning service, while the otherwise equivalent unsandboxed control can. See [`release/evidence/sandbox-permission-gate.md`](../release/evidence/sandbox-permission-gate.md).
-- Canonical metadata and four truthful static Release screenshots validate locally. Inbox and live-coaching Store screenshots remain blocked until the physical detector gate passes.
+- Canonical metadata and five truthful static Release screenshots validate locally. Dark menu-bar, Dock/Finder icon, Inbox access, Settings navigation, and two real presentation previews are indexed under `release/evidence`. Light menu-bar appearance remains a human check because changing the maintainer's global Appearance setting was outside the automated capture; live coaching remains blocked until the physical detector gate passes.
 - A hardened, unsandboxed Developer ID fallback configuration builds and passes strict code-sign verification; notarization remains a primary-agent release step.
 
 ## Commands

@@ -16,7 +16,12 @@ Mac App Store submission is blocked until the exact sandboxed Release artifact p
 1. Remove prior test copies of the `com.serp.shortcutcoach` build from LaunchServices.
 2. Reset Accessibility permission only for `com.serp.shortcutcoach`.
 3. Install and launch the exact sandboxed Release artifact.
-4. Confirm Dock presence, SERP arrow menu-bar presence, Coaching Inbox, Settings, and About.
+4. Complete the feasible visual/UI checks before permission:
+   - SERP app icon renders in Finder and in the Dock.
+   - SERP template status item is visible and clickable in both light and dark appearance.
+   - Clicking the status item opens the branded Coaching Inbox.
+   - Main-window navigation reaches History, Presentation Channels, App Presence, Permissions, Diagnostics, and About without clipping.
+   - Preview Top-center Shelf and Decision Banner through their real Presentation Channels buttons.
 5. Grant Accessibility permission through the system prompt and confirm Diagnostics reports monitoring.
 6. Physically exercise these proven release gates:
    - Finder → File → New Finder Window → exactly one durable `⌘N` event.
@@ -44,6 +49,8 @@ failed to do a bootstrap look-up: xpc_error=[159: Unknown error: 159]
 The same clean request from the unsandboxed Developer ID control build connected to `com.apple.universalaccessAuthWarn` without the bootstrap failure. This isolates the failed permission flow to App Sandbox on this machine. Apple documents that `AXIsProcessTrustedWithOptions` should asynchronously inform an untrusted user when `kAXTrustedCheckOptionPrompt` is true; the sandboxed artifact did not reach that behavior.
 
 Because the clean Accessibility permission flow fails, the required Chrome/Finder/window-control physical checks cannot begin. The Mac App Store gate therefore fails before upload. Do not create or upload a Mac App Store build from this branch. Use the documented Developer ID + notarization configuration unless Apple grants an App-Store-acceptable capability or the sandbox behavior is proven fixed in a future macOS/toolchain build.
+
+Feasible UI evidence passed for the complete Settings window/navigation, Finder and Dock icons, dark-appearance menu-bar symbol, clickable Coaching Inbox, and real Top-center Shelf/Decision Banner previews. A real light-appearance menu-bar capture was not taken because that requires changing the maintainer's global macOS appearance setting; the AppKit regression test instead verifies that the actual status-button image is configured as a template. Light-appearance visual acceptance remains an explicit human check.
 
 Primary references:
 

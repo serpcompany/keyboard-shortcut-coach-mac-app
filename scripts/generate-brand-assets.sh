@@ -15,14 +15,25 @@ fi
 
 mkdir -p "$appicon_dir" "$store_dir"
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+cleanup() {
+  if [[ -d "$tmp_dir" ]]; then
+    find "$tmp_dir" -depth -delete
+  fi
+}
+trap cleanup EXIT
 
 rsvg-convert --width 700 --height 700 "$source_svg" --output "$tmp_dir/arrow.png"
 magick -size 1024x1024 xc:'#FFFFFF' "$tmp_dir/arrow.png" -gravity center -composite -alpha off PNG24:"$tmp_dir/app-icon-1024.png"
 
 for size in 16 32 64 128 256 512 1024; do
-  magick "$tmp_dir/app-icon-1024.png" -filter Lanczos -resize "${size}x${size}" -strip PNG24:"$appicon_dir/app-icon-${size}.png"
+  magick "$tmp_dir/app-icon-1024.png" -filter Lanczos -resize "${size}x${size}" \
+    -strip +set date:create +set date:modify \
+    -define png:exclude-chunk=date,time \
+    PNG24:"$appicon_dir/app-icon-${size}.png"
 done
 
-magick "$tmp_dir/app-icon-1024.png" -strip PNG24:"$store_dir/ShortcutCoach-AppStore-1024.png"
+magick "$tmp_dir/app-icon-1024.png" \
+  -strip +set date:create +set date:modify \
+  -define png:exclude-chunk=date,time \
+  PNG24:"$store_dir/ShortcutCoach-AppStore-1024.png"
 echo "Generated SERP app assets from $source_svg"

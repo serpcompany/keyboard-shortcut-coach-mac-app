@@ -51,7 +51,7 @@ To review:
 4. In Finder, click File → New Finder Window. Shortcut Coach should save and present “Try ⌘N next time.”
 5. In Chrome, physically click the New Tab `+` button. Shortcut Coach should save and present “Try ⌘T next time.”
 6. Click the SERP arrow in the menu bar to review the Coaching Inbox.
-7. Settings → Notification Styles can preview each presentation channel without requiring a manual action.
+7. Settings → Presentation Channels can preview each presentation channel without requiring a manual action.
 
 No external hardware, purchase, account, or network connection is required.
 
