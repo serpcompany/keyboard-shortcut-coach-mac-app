@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --lane full|lite --version X.Y.Z [--artifact PATH] [--notes-file PATH] [--dry-run]" >&2
+  echo "Usage: $0 --lane full|lite --version X.Y.Z [--artifact PATH] [--notes-file PATH] [--prerelease] [--dry-run]" >&2
 }
 
 lane=""
@@ -10,6 +10,7 @@ version=""
 artifact=""
 notes_file=""
 dry_run=false
+prerelease=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,6 +18,7 @@ while [[ $# -gt 0 ]]; do
     --version) version="${2:-}"; shift 2 ;;
     --artifact) artifact="${2:-}"; shift 2 ;;
     --notes-file) notes_file="${2:-}"; shift 2 ;;
+    --prerelease) prerelease=true; shift ;;
     --dry-run) dry_run=true; shift ;;
     *) usage; exit 2 ;;
   esac
@@ -88,6 +90,7 @@ echo "Version: $version"
 echo "Tag: $tag"
 echo "Commit: $release_commit"
 echo "Title: $title"
+echo "Prerelease: $prerelease"
 [[ -n "$artifact" ]] && echo "Artifact: $artifact"
 [[ -n "$notes_file" ]] && echo "Notes: $notes_file"
 
@@ -115,6 +118,9 @@ git tag -a "$tag" "$release_commit" -m "$title"
 git push origin "$tag"
 
 release_args=("$tag" --verify-tag --target "$release_commit" --title "$title")
+if [[ "$prerelease" == true ]]; then
+  release_args+=(--prerelease)
+fi
 if [[ -n "$notes_file" ]]; then
   release_args+=(--notes-file "$notes_file")
 else

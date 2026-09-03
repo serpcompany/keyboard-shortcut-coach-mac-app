@@ -28,6 +28,7 @@ scripts/publish-github-release.sh \
   --lane full \
   --version 1.0.0 \
   --artifact dist/Shortcut-Coach-1.0.0.zip \
+  --prerelease \
   --dry-run
 
 # App Store Lite: GitHub is the public ledger; the Store distributes the binary.
@@ -42,5 +43,6 @@ scripts/publish-github-release.sh \
 - Reserve the tag only after the exact external artifact/build is known.
 - A failed GitHub Release creation leaves evidence in the pushed tag; repair that release instead of silently retagging another commit.
 - Attach the notarized full artifact, never an unsigned or unstapled build.
+- Use `--prerelease` for public test builds that are not yet the recommended general release.
 - Do not attach a Mac App Store package for public installation. Record its App Store version/build identifiers in the release notes.
 - Treat GitHub Releases as public. Keep certificates, profiles, API keys, private logs, reviewer contact details, and Apple correspondence out of assets and notes.
