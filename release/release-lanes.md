@@ -21,3 +21,4 @@ Lite must stay independently useful and its CTA must remain secondary to the sho
 - Use the same approved SERP visual system.
 - Never present Lite screenshots as evidence of full detector functionality.
 - Validate and smoke-test the exact archive for each lane.
+- Publish an annotated lane tag and matching GitHub Release for every externally shipped version. Follow [`docs/agents/releases.md`](../docs/agents/releases.md).

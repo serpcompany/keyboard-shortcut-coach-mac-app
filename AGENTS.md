@@ -12,3 +12,6 @@ Use the five default triage labels. See `docs/agents/triage-labels.md`.
 
 This is a single-context repository. See `docs/agents/domain.md`.
 
+### Releases
+
+Before versioning, tagging, notarization, App Store submission, or GitHub Release work, read `docs/agents/releases.md`.

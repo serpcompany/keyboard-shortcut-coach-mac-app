@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added lane-specific GitHub tags and Releases as a required step for every shipped version.
 - Adopted the approved SERP arrow across the app icon, menu bar, inbox, and About view.
 - Finalized the production identity as `com.serp.shortcutcoach` with migration from both earlier bundle identifiers.
 - Prepared version 1.0.0, build 1, hardened runtime, and a sandboxed Mac App Store Release configuration.
