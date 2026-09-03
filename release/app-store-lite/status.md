@@ -7,7 +7,7 @@
 - Build ID: `3943f3ef-90a0-4250-88f9-02549a9706cc`
 - Build processing: `VALID`
 - Screenshot set: `7f93a8ed-7129-4af8-9f7b-a7cf6efd7024`
-- Price: free
+- Price: US $9.99 with Apple's automatic territory-equivalent prices
 - Availability: all current territories and future territories
 - Release type: automatic after approval
 - App Privacy: published; no data collected
