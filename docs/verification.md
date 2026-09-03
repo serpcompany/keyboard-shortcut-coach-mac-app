@@ -45,6 +45,16 @@ Issue #10 adds deterministic classification and correlation coverage for Chrome 
 
 Do not convert an implemented or synthetic status into a broad working claim.
 
+## 1.0 release preparation
+
+- The final SERP icon, menu-bar mark, and About presentation are built from the maintainer-supplied vector source.
+- Product identity is `com.serp.shortcutcoach`; deterministic coverage verifies migration from `com.serpcompany.shortcutcoach` and `co.serp.shortcutcoach`.
+- The complete suite passes 28 tests.
+- A universal sandboxed Release build passes strict code-sign and static entitlement inspection.
+- The Mac App Store gate is blocked: after a clean Accessibility reset, the sandboxed Release cannot open Apple's Accessibility authorization warning service, while the otherwise equivalent unsandboxed control can. See [`release/evidence/sandbox-permission-gate.md`](../release/evidence/sandbox-permission-gate.md).
+- Canonical metadata and four truthful static Release screenshots validate locally. Inbox and live-coaching Store screenshots remain blocked until the physical detector gate passes.
+- A hardened, unsandboxed Developer ID fallback configuration builds and passes strict code-sign verification; notarization remains a primary-agent release step.
+
 ## Commands
 
 ~~~sh
