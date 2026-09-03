@@ -15,11 +15,11 @@ final class NativeStatusItemController: NSObject {
         item.autosaveName = "ShortcutCoachStatus"
         item.isVisible = true
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcut Coach")
-            image?.isTemplate = true
-            button.image = image
-            button.imagePosition = .imageOnly
+            button.image = nil
+            button.title = "SC"
+            button.font = .systemFont(ofSize: 10, weight: .bold)
             button.toolTip = "Shortcut Coach"
+            button.setAccessibilityLabel("Shortcut Coach")
             button.target = self
             button.action = #selector(togglePopover(_:))
         }
