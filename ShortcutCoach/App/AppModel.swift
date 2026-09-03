@@ -5,6 +5,7 @@ import Observation
 @MainActor
 @Observable
 final class AppModel {
+    let releaseLane: ReleaseLane
     let preferences: AppPreferences
     let inbox: InboxStore
 
@@ -21,6 +22,7 @@ final class AppModel {
 
     convenience init() {
         self.init(
+            releaseLane: .current,
             preferences: AppPreferences(
                 defaults: .standard,
                 legacyDefaults: ProductIdentity.legacyBundleIdentifiers.compactMap(UserDefaults.init(suiteName:))
@@ -33,12 +35,14 @@ final class AppModel {
     }
 
     init(
+        releaseLane: ReleaseLane,
         preferences: AppPreferences,
         inbox: InboxStore,
         presenceController: any AppPresenceControlling,
         detector: ManualActionDetector,
         presenter: PresentationWindowController
     ) {
+        self.releaseLane = releaseLane
         self.preferences = preferences
         self.inbox = inbox
         self.presenceController = presenceController
@@ -66,16 +70,22 @@ final class AppModel {
         guard !isStarted else { return }
         isStarted = true
         presenceController.apply(showInDockAndSwitcher: preferences.showInDockAndSwitcher)
-        detector.start()
-        detectorStatus = detector.status
+        if releaseLane.supportsManualActionDetection {
+            detector.start()
+            detectorStatus = detector.status
+        } else {
+            detectorStatus = .stopped
+        }
         refreshDockBadge()
     }
 
     func requestAccessibilityPermission() {
+        guard releaseLane.supportsManualActionDetection else { return }
         detector.requestAccessibilityPermission()
     }
 
     func retryDetection() {
+        guard releaseLane.supportsManualActionDetection else { return }
         detector.start()
         detectorStatus = detector.status
     }

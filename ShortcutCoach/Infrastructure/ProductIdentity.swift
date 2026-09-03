@@ -1,8 +1,36 @@
 import AppKit
 
+enum ReleaseLane: String, CaseIterable {
+    case full
+    case appStoreLite
+
+    #if APP_STORE_LITE
+    static let current = ReleaseLane.appStoreLite
+    #else
+    static let current = ReleaseLane.full
+    #endif
+
+    var productName: String {
+        switch self {
+        case .full: "Shortcut Coach"
+        case .appStoreLite: "Shortcut Coach Lite"
+        }
+    }
+
+    var bundleIdentifier: String {
+        switch self {
+        case .full: "com.serp.shortcutcoach"
+        case .appStoreLite: "com.serp.shortcutcoach.lite"
+        }
+    }
+
+    var supportsManualActionDetection: Bool { self == .full }
+    var showsFullVersionCTA: Bool { self == .appStoreLite }
+
+    static let fullVersionURL = URL(string: "https://serp.co/shortcut-coach/")!
+}
+
 enum ProductIdentity {
-    static let productName = "Shortcut Coach"
-    static let accessibilityName = "Shortcut Coach"
     static let legacyBundleIdentifiers = [
         "com.serpcompany.shortcutcoach",
         "co.serp.shortcutcoach"
@@ -22,8 +50,8 @@ enum StatusItemBranding {
         button.image = image
         button.imagePosition = .imageOnly
         button.title = ""
-        button.toolTip = ProductIdentity.productName
-        button.setAccessibilityLabel(ProductIdentity.accessibilityName)
+        button.toolTip = ReleaseLane.current.productName
+        button.setAccessibilityLabel(ReleaseLane.current.productName)
         button.target = target
         button.action = action
     }

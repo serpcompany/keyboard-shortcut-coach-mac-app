@@ -6,7 +6,7 @@ struct ShortcutCoachApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        WindowGroup("Shortcut Coach", id: "main") {
+        WindowGroup(ReleaseLane.current.productName, id: "main") {
             SettingsRootView()
                 .environment(model)
                 .task {

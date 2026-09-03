@@ -4,9 +4,10 @@
 
 - Project generator: project.yml
 - Generated Xcode project: ShortcutCoach.xcodeproj
-- Shared scheme: ShortcutCoach
+- Schemes: ShortcutCoach (tests), ShortcutCoach-DeveloperID (full), ShortcutCoach-Lite (App Store Lite)
 - Minimum platform: macOS 14
 - Bundle identifier: com.serp.shortcutcoach
+- Lite bundle identifier: com.serp.shortcutcoach.lite
 
 ## Generate and open
 

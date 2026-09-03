@@ -1,5 +1,7 @@
 # Verification status
 
+Release verification covers both lanes. Run the unit suite with `ShortcutCoach`, build the full product with `ShortcutCoach-DeveloperID`, and build the sandboxed Lite product with `ShortcutCoach-Lite`. Confirm the Lite archive uses `com.serp.shortcutcoach.lite`, contains the App Sandbox entitlement, and never exposes or starts Accessibility detection.
+
 ## Evidence levels
 
 | Level | Meaning |

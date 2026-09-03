@@ -24,6 +24,7 @@ See:
 - [Privacy](docs/privacy.md)
 - [Development guide](docs/development.md)
 - [Roadmap](docs/roadmap.md)
+- [Release lanes](release/release-lanes.md)
 
 ## Develop
 
@@ -54,6 +55,8 @@ xcodebuild \
 
 The product name is **Shortcut Coach** and the production bundle identifier is **com.serp.shortcutcoach**.
 
-## Release status
+## Release lanes
 
-Version 1.0 release assets and canonical App Store metadata live under [`brand`](brand), [`metadata`](metadata), and [`release`](release). The sandboxed Mac App Store build currently fails the clean Accessibility authorization gate, so it must not be uploaded. The repository includes a release-quality `ShortcutCoach-DeveloperID` fallback configuration for notarized direct distribution.
+The full app ships through Developer ID signing and Apple notarization because its Accessibility-powered detector does not pass the current App Sandbox gate. `ShortcutCoach-DeveloperID` builds that product as `com.serp.shortcutcoach`.
+
+`ShortcutCoach-Lite` builds a separate sandboxed Mac App Store product as `com.serp.shortcutcoach.lite`. Lite provides a standalone shortcut library and previews, never requests Accessibility, and can open the SERP product website from its clearly labeled Full Version settings destination. See [the release-lane decision](docs/adr/0002-full-and-app-store-lite-release-lanes.md).

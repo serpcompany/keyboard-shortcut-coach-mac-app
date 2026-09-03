@@ -41,7 +41,7 @@ struct MenuInboxView: View {
                 .frame(width: 28, height: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Coaching Inbox").font(.headline)
+                Text(model.releaseLane == .appStoreLite ? "Shortcut Coach Lite" : "Coaching Inbox").font(.headline)
                 Text(model.unreadCount == 0 ? "You're caught up" : "\(model.unreadCount) unread")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -63,6 +63,9 @@ struct MenuInboxView: View {
                 NotificationCenter.default.post(name: .openMainWindow, object: nil)
             }
             .keyboardShortcut(",", modifiers: .command)
+            if model.releaseLane.showsFullVersionCTA {
+                Link("Explore Full Version", destination: ReleaseLane.fullVersionURL)
+            }
         }
         .padding(12)
     }

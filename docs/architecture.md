@@ -56,3 +56,7 @@ macOS supported activation policies couple ordinary Dock presence with Cmd-Tab p
 - Accessory: both hidden.
 
 The menu-bar item remains present in both modes. See [ADR 0001](adr/0001-notification-delivery-and-app-presence.md).
+
+## Distribution boundary
+
+The full and App Store Lite products share domain, presentation, and SERP-brand modules. Only the full target compiles the Detection module. Lite adds a local shortcut catalog and a no-op detector boundary solely to satisfy shared composition, while excluding permission/detector surfaces through its compile-time release-lane setting. See [ADR 0002](adr/0002-full-and-app-store-lite-release-lanes.md).

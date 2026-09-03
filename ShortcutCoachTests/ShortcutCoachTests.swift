@@ -158,6 +158,33 @@ final class ShortcutCoachTests: XCTestCase {
         XCTAssertEqual(button.action, #selector(StatusItemActionTarget.activate(_:)))
     }
 
+    func testReleaseLanesHaveSeparateIdentitiesAndCapabilities() {
+        XCTAssertEqual(ReleaseLane.full.productName, "Shortcut Coach")
+        XCTAssertEqual(ReleaseLane.full.bundleIdentifier, "com.serp.shortcutcoach")
+        XCTAssertTrue(ReleaseLane.full.supportsManualActionDetection)
+        XCTAssertFalse(ReleaseLane.full.showsFullVersionCTA)
+
+        XCTAssertEqual(ReleaseLane.appStoreLite.productName, "Shortcut Coach Lite")
+        XCTAssertEqual(ReleaseLane.appStoreLite.bundleIdentifier, "com.serp.shortcutcoach.lite")
+        XCTAssertFalse(ReleaseLane.appStoreLite.supportsManualActionDetection)
+        XCTAssertTrue(ReleaseLane.appStoreLite.showsFullVersionCTA)
+        XCTAssertEqual(ReleaseLane.fullVersionURL.scheme, "https")
+    }
+
+    func testLiteShortcutCatalogIsUsefulAndSearchable() {
+        XCTAssertGreaterThanOrEqual(ShortcutCatalog.tips.count, 12)
+        XCTAssertTrue(ShortcutCatalog.applications.contains("Finder"))
+        XCTAssertTrue(ShortcutCatalog.applications.contains("Google Chrome"))
+        XCTAssertEqual(
+            ShortcutCatalog.matching(searchText: "trash", application: "Finder").map(\.shortcut),
+            ["⌘Delete"]
+        )
+        XCTAssertTrue(
+            ShortcutCatalog.matching(searchText: "copy", application: "Safari")
+                .contains(where: { $0.applicationName == "General" })
+        )
+    }
+
     func testEveryPresentationChannelHasStableCopyAndIdentity() {
         XCTAssertEqual(Set(NotificationChannel.allCases.map(\.id)).count, NotificationChannel.allCases.count)
         for channel in NotificationChannel.allCases {

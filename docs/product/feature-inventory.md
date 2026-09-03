@@ -1,5 +1,7 @@
 # Shortcut Coach MVP feature inventory
 
+This inventory describes the full release lane. The App Store Lite lane provides the shortcut library, active-app guidance, presentation previews, app presence, menu-bar access, and Full Version website CTA; it excludes Accessibility permission and manual-action detection.
+
 ## User journey
 
 1. Shortcut Coach launches in the Dock, Cmd-Tab, and menu bar.

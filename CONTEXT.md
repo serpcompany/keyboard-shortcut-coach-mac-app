@@ -8,4 +8,5 @@ Shortcut Coach observes a **manual action** in another macOS app and turns it in
 - A **presentation channel** is one user-visible delivery mechanism such as a native banner, custom toast, Dock badge, or sound.
 - The **coaching inbox** is durable history and unread state. It is not optional, even when transient presentation channels are disabled.
 - **App presence** means the coupled macOS Dock and Cmd-Tab visibility policy. The menu-bar item remains present.
-
+- A **full release lane** is the notarized, directly distributed app with system-wide manual-action detection.
+- An **App Store Lite release lane** is the sandboxed, independently useful shortcut-reference app. It never claims or requests system-wide manual-action detection.

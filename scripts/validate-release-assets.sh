@@ -7,6 +7,7 @@ cd "$repo_root"
 scripts/generate-brand-assets.sh
 plutil -lint ShortcutCoach/Resources/ShortcutCoach-AppStore.entitlements >/dev/null
 asc metadata validate --dir metadata --output table
+asc metadata validate --dir metadata-lite --output table
 scripts/generate-app-store-screenshots.sh
 asc screenshots validate --path release/screenshots/app-store --device-type APP_DESKTOP --output table
 
@@ -21,7 +22,7 @@ for size in 16 32 64 128 256 512 1024; do
   [[ "$(sips -g pixelHeight "$file" | awk '/pixelHeight/ {print $2}')" == "$size" ]]
 done
 
-if rg -n -i 'keylume|gitify|heyclicky|openclicky' ShortcutCoach project.yml metadata release/app-store; then
+if rg -n -i 'keylume|gitify|heyclicky|openclicky' ShortcutCoach project.yml metadata metadata-lite release/app-store; then
   echo "Third-party prototype identity found in shipped/release material" >&2
   exit 1
 fi
