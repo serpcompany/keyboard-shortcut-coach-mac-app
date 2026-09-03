@@ -40,7 +40,8 @@ final class FinderTrashMonitor {
     }
 
     var onEvent: ((CoachingEvent) -> Void)?
-    private let queue = DispatchQueue(label: "co.serp.shortcutcoach.finder-trash", qos: .userInteractive)
+    // Keep AX access serialized with every other detector path.
+    private let queue = DispatchQueue.main
     private var session: Session?
 
     func receive(_ sample: PointerSample) {

@@ -41,12 +41,15 @@ struct AccessibilitySnapshot: Codable, Equatable, Sendable {
 }
 
 final class AccessibilitySnapshotter {
-    private let queue = DispatchQueue(label: "co.serp.shortcutcoach.accessibility-snapshot", qos: .userInteractive)
+    // AppKit's in-process accessibility implementation is main-thread-bound.
+    // A global click can land on Shortcut Coach itself, so all AX hit-testing
+    // must share the main queue rather than racing from detector worker queues.
+    private let queue = DispatchQueue.main
 
     func snapshot(at point: CGPoint, completion: @escaping (AccessibilitySnapshot?) -> Void) {
         queue.async {
             let result = self.makeSnapshot(at: point)
-            DispatchQueue.main.async { completion(result) }
+            completion(result)
         }
     }
 

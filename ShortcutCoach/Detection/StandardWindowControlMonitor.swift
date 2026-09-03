@@ -84,7 +84,9 @@ final class StandardWindowControlMonitor {
     }
 
     var onEvent: ((CoachingEvent) -> Void)?
-    private let queue = DispatchQueue(label: "co.serp.shortcutcoach.window-controls", qos: .userInteractive)
+    // Keep AX access serialized with the snapshotter. AppKit can service a
+    // hit-test against our own SwiftUI hierarchy in-process.
+    private let queue = DispatchQueue.main
     private var session: Session?
 
     func receive(_ sample: PointerSample) {
