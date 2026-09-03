@@ -3,6 +3,13 @@
 ## Unreleased
 
 - Added lane-specific GitHub tags and Releases as a required step for every shipped version.
+
+## Shortcut Coach Lite 1.0.0 — 2026-09-04
+
+- Submitted the sandboxed Mac App Store Lite edition for Apple review.
+- Added the shortcut library, notification presentation previews, and a website-only Full Version call to action.
+- Published the SERP-branded product, privacy, and support pages.
+- Added validated macOS App Store screenshots, metadata, signing, and release automation.
 - Adopted the approved SERP arrow across the app icon, menu bar, inbox, and About view.
 - Finalized the production identity as `com.serp.shortcutcoach` with migration from both earlier bundle identifiers.
 - Prepared version 1.0.0, build 1, hardened runtime, and a sandboxed Mac App Store Release configuration.
