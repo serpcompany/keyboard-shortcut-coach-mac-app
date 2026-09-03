@@ -6,7 +6,7 @@
 - Generated Xcode project: ShortcutCoach.xcodeproj
 - Shared scheme: ShortcutCoach
 - Minimum platform: macOS 14
-- Bundle identifier: co.serp.shortcutcoach
+- Bundle identifier: com.serpcompany.shortcutcoach
 
 ## Generate and open
 
@@ -43,7 +43,7 @@ macOS associates Accessibility approval with the app's signed code requirement. 
 If System Settings says the app is enabled but Diagnostics still says permission is required, reset only this bundle's stale row:
 
 ~~~sh
-tccutil reset Accessibility co.serp.shortcutcoach
+tccutil reset Accessibility com.serpcompany.shortcutcoach
 ~~~
 
 Then relaunch the exact app, request permission, and enable the newly registered row.
@@ -51,4 +51,3 @@ Then relaunch the exact app, request permission, and enable the newly registered
 ## Runtime acceptance
 
 A valid detector test requires a physical mouse click. Accessibility automation that invokes a menu item's Press action proves the command works, but intentionally does not produce a mouse event for the detector.
-

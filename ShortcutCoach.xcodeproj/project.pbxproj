@@ -396,7 +396,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serpcompany.shortcutcoach;
 				PRODUCT_NAME = ShortcutCoach;
 				SDKROOT = macosx;
 			};
@@ -416,7 +416,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serpcompany.shortcutcoach;
 				PRODUCT_NAME = ShortcutCoach;
 				SDKROOT = macosx;
 			};
@@ -433,7 +433,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serpcompany.shortcutcoach.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShortcutCoach.app/Contents/MacOS/ShortcutCoach";
 			};
@@ -509,7 +509,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.serp.shortcutcoach.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.serpcompany.shortcutcoach.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ShortcutCoach.app/Contents/MacOS/ShortcutCoach";
 			};

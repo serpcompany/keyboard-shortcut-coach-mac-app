@@ -12,7 +12,6 @@ final class NativeStatusItemController: NSObject {
         guard statusItem == nil else { return }
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.autosaveName = "ShortcutCoachStatus"
         item.isVisible = true
         if let button = item.button {
             button.image = nil

@@ -126,7 +126,7 @@ final class StandardWindowControlMonitor {
         guard AXUIElementGetPid(hit, &pid) == .success,
               let running = NSRunningApplication(processIdentifier: pid),
               let bundle = running.bundleIdentifier,
-              bundle != "co.serp.shortcutcoach",
+              bundle != Bundle.main.bundleIdentifier,
               NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return }
 
         let application = AXUIElementCreateApplication(pid)

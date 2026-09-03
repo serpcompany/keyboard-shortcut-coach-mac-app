@@ -21,7 +21,10 @@ final class AppModel {
 
     convenience init() {
         self.init(
-            preferences: AppPreferences(),
+            preferences: AppPreferences(
+                defaults: .standard,
+                legacyDefaults: UserDefaults(suiteName: "co.serp.shortcutcoach")
+            ),
             inbox: InboxStore(),
             presenceController: AppPresenceController(),
             detector: ManualActionDetector(),

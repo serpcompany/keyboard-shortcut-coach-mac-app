@@ -1,6 +1,6 @@
 name: ShortcutCoach
 options:
-  bundleIdPrefix: co.serp
+  bundleIdPrefix: com.serpcompany
   deploymentTarget:
     macOS: "14.0"
 settings:
@@ -18,7 +18,7 @@ targets:
       - ShortcutCoach
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: co.serp.shortcutcoach
+        PRODUCT_BUNDLE_IDENTIFIER: com.serpcompany.shortcutcoach
         PRODUCT_NAME: ShortcutCoach
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Shortcut Coach
@@ -34,7 +34,7 @@ targets:
       - target: ShortcutCoach
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: co.serp.shortcutcoach.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.serpcompany.shortcutcoach.tests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   ShortcutCoach:

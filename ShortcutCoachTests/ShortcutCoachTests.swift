@@ -99,6 +99,26 @@ final class ShortcutCoachTests: XCTestCase {
         XCTAssertEqual(restored.selectedChannels, [.dockBadge, .sound])
     }
 
+    func testPreferencesMigrateFromThePreviousBundleIdentity() {
+        let currentSuite = "ShortcutCoachTests-current-\(UUID().uuidString)"
+        let legacySuite = "ShortcutCoachTests-legacy-\(UUID().uuidString)"
+        let current = UserDefaults(suiteName: currentSuite)!
+        let legacy = UserDefaults(suiteName: legacySuite)!
+        defer {
+            current.removePersistentDomain(forName: currentSuite)
+            legacy.removePersistentDomain(forName: legacySuite)
+        }
+        legacy.set([NotificationChannel.topCenterShelf.rawValue, NotificationChannel.sound.rawValue], forKey: "selectedNotificationChannels")
+        legacy.set(false, forKey: "showInDockAndSwitcher")
+
+        let migrated = AppPreferences(defaults: current, legacyDefaults: legacy)
+
+        XCTAssertEqual(migrated.selectedChannels, [.topCenterShelf, .sound])
+        XCTAssertFalse(migrated.showInDockAndSwitcher)
+        XCTAssertEqual(current.array(forKey: "selectedNotificationChannels") as? [String], ["sound", "topCenterShelf"])
+        XCTAssertEqual(current.bool(forKey: "showInDockAndSwitcher"), false)
+    }
+
     func testEveryPresentationChannelHasStableCopyAndIdentity() {
         XCTAssertEqual(Set(NotificationChannel.allCases.map(\.id)).count, NotificationChannel.allCases.count)
         for channel in NotificationChannel.allCases {

@@ -52,4 +52,4 @@ xcodebuild \
   test
 ~~~
 
-The working product name is **Shortcut Coach** and the bundle identifier is **co.serp.shortcutcoach**.
+The working product name is **Shortcut Coach** and the bundle identifier is **com.serpcompany.shortcutcoach**.
