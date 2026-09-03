@@ -6,7 +6,7 @@ Issues live in this repository's GitHub Issues. See `docs/agents/issue-tracker.m
 
 ### Triage labels
 
-Use the five default triage labels. See `docs/agents/triage-labels.md`.
+Use the canonical triage labels. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
