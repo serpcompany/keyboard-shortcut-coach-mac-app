@@ -3,7 +3,6 @@ import SwiftUI
 
 struct MenuInboxView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,12 +54,10 @@ struct MenuInboxView: View {
             }
             Spacer()
             Button("Open Settings…") {
-                openWindow(id: "main")
-                NSApplication.shared.activate(ignoringOtherApps: true)
+                NotificationCenter.default.post(name: .openMainWindow, object: nil)
             }
             .keyboardShortcut(",", modifiers: .command)
         }
         .padding(12)
     }
 }
-

@@ -16,6 +16,7 @@
 		5EE6FCD123B5420A836FF29C /* ChromeActionAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE80C545377166106FFF42B2 /* ChromeActionAdapter.swift */; };
 		6081F0AA40A9C8082E1E50C7 /* NotificationDeliveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B963877BBE1613D7E6E24A2F /* NotificationDeliveryService.swift */; };
 		6637B03305D13107EB43925E /* FinderTrashMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BCD3FBD9028F6B2DD3CB481 /* FinderTrashMonitor.swift */; };
+		6FD631464DEB7C01B56E2CFE /* NativeStatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85202AEEDB7F785895CD38BB /* NativeStatusItemController.swift */; };
 		86197DFCC18E730E1B0B84B5 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97768A70C4D57BD5905CE3DC /* SettingsRootView.swift */; };
 		A22903253477ED1A64C3113C /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF7AA2C927D3A9058364C2C /* AppPreferences.swift */; };
 		A383A9AA12BFCACB1147C6F4 /* ChromeActionDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D4D151D0C84E03C175C0A69 /* ChromeActionDetectionTests.swift */; };
@@ -61,6 +62,7 @@
 		4A9B8850F2DAEA4EDD0BF199 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
 		68409EEF706862F873949570 /* SystemChannelAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemChannelAdapters.swift; sourceTree = "<group>"; };
 		84A91F5AE30F3E5A3FBD9677 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		85202AEEDB7F785895CD38BB /* NativeStatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeStatusItemController.swift; sourceTree = "<group>"; };
 		97768A70C4D57BD5905CE3DC /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
 		AA2927CCC862E22D1AC42C66 /* NotificationChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationChannel.swift; sourceTree = "<group>"; };
 		AE80C545377166106FFF42B2 /* ChromeActionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeActionAdapter.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 			children = (
 				47F77F3153BC7533CAF6DC99 /* AppDelegate.swift */,
 				84A91F5AE30F3E5A3FBD9677 /* AppModel.swift */,
+				85202AEEDB7F785895CD38BB /* NativeStatusItemController.swift */,
 				4A8B4D190618367BA621B7CF /* ShortcutCoachApp.swift */,
 			);
 			path = App;
@@ -277,6 +280,7 @@
 				C81119E1F7F70E43ABE75DEB /* InboxStore.swift in Sources */,
 				DA57BC1B8DDF3CA1DD9E2698 /* ManualActionDetector.swift in Sources */,
 				DCFA4A670AFAE1743719C822 /* MenuInboxView.swift in Sources */,
+				6FD631464DEB7C01B56E2CFE /* NativeStatusItemController.swift in Sources */,
 				F0754568677780A66B755C23 /* NotificationChannel.swift in Sources */,
 				6081F0AA40A9C8082E1E50C7 /* NotificationDeliveryService.swift in Sources */,
 				A715457FB595E5AB30AB782B /* PointerEventMonitor.swift in Sources */,
