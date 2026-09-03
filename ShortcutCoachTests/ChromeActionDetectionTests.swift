@@ -7,6 +7,14 @@ import XCTest
 final class ChromeActionDetectionTests: XCTestCase {
     private let adapter = ChromeActionAdapter()
 
+    func testStaticFallbackCatalogIsExplicitlyVersioned() {
+        XCTAssertEqual(ChromeShortcutCatalog.characterizedChromeVersion, "153.0.8010.12")
+        XCTAssertEqual(ChromeShortcutCatalog.newTab, "⌘T")
+        XCTAssertEqual(ChromeShortcutCatalog.closeTab, "⌘W")
+        XCTAssertEqual(ChromeShortcutCatalog.selectTab(index: 4), "⌘4")
+        XCTAssertEqual(ChromeShortcutCatalog.selectTab(index: 10), "⌘9")
+    }
+
     func testSanitizedCharacterizationFixtureHasNoPrivateBrowserData() throws {
         let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("docs/evidence/chrome/chrome-153-tab-strip.json")

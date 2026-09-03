@@ -43,13 +43,13 @@ struct ActionCorrelator {
         let output: (String, String)?
         switch candidate.kind {
         case .chromeNewTab where postTabs.tabs.count == preTabs.tabs.count + 1:
-            output = ("New Tab", "⌘T")
+            output = ("New Tab", ChromeShortcutCatalog.newTab)
         case .chromeCloseActiveTab(let token)
             where postTabs.tabs.count == preTabs.tabs.count - 1 && !postTabs.tabs.contains(where: { $0.token == token }):
-            output = ("Close Tab", "⌘W")
+            output = ("Close Tab", ChromeShortcutCatalog.closeTab)
         case .chromeSelectTab(let token, let index, let count)
             where postTabs.tabs.count == count && postTabs.tabs.first(where: { $0.token == token })?.selected == true:
-            output = ("Select Tab \(index)", index <= 8 ? "⌘\(index)" : "⌘9")
+            output = ("Select Tab \(index)", ChromeShortcutCatalog.selectTab(index: index))
         default: output = nil
         }
         guard let output else { return nil }

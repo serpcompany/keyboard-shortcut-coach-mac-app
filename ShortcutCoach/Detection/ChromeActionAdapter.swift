@@ -20,6 +20,15 @@ protocol ApplicationActionAdapter {
     func classify(_ snapshot: AccessibilitySnapshot, point: CGPoint) -> ManualActionCandidate?
 }
 
+enum ChromeShortcutCatalog {
+    // Static defaults are the explicit fallback characterized against this Chrome build.
+    // A later slice can resolve equivalent visible menu items before using these values.
+    static let characterizedChromeVersion = "153.0.8010.12"
+    static let newTab = "⌘T"
+    static let closeTab = "⌘W"
+    static func selectTab(index: Int) -> String { index <= 8 ? "⌘\(index)" : "⌘9" }
+}
+
 struct ChromeActionAdapter: ApplicationActionAdapter {
     static let bundleIdentifiers: Set<String> = ["com.google.Chrome", "org.chromium.Chromium"]
 
