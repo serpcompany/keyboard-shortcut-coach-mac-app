@@ -14,11 +14,14 @@ final class NativeStatusItemController: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.isVisible = true
         if let button = item.button {
-            button.image = nil
-            button.title = "SC"
-            button.font = .systemFont(ofSize: 10, weight: .bold)
-            button.toolTip = "Shortcut Coach"
-            button.setAccessibilityLabel("Shortcut Coach")
+            let image = NSImage(named: ProductIdentity.statusItemImageName)
+            image?.isTemplate = true
+            image?.size = NSSize(width: 17, height: 17)
+            button.image = image
+            button.imagePosition = .imageOnly
+            button.title = ""
+            button.toolTip = ProductIdentity.productName
+            button.setAccessibilityLabel(ProductIdentity.accessibilityName)
             button.target = self
             button.action = #selector(togglePopover(_:))
         }

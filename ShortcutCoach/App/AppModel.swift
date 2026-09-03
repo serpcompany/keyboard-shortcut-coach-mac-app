@@ -23,7 +23,7 @@ final class AppModel {
         self.init(
             preferences: AppPreferences(
                 defaults: .standard,
-                legacyDefaults: UserDefaults(suiteName: "co.serp.shortcutcoach")
+                legacyDefaults: ProductIdentity.legacyBundleIdentifiers.compactMap(UserDefaults.init(suiteName:))
             ),
             inbox: InboxStore(),
             presenceController: AppPresenceController(),

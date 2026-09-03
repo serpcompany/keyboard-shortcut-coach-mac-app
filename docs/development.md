@@ -6,7 +6,7 @@
 - Generated Xcode project: ShortcutCoach.xcodeproj
 - Shared scheme: ShortcutCoach
 - Minimum platform: macOS 14
-- Bundle identifier: com.serpcompany.shortcutcoach
+- Bundle identifier: com.serp.shortcutcoach
 
 ## Generate and open
 
@@ -43,7 +43,7 @@ macOS associates Accessibility approval with the app's signed code requirement. 
 If System Settings says the app is enabled but Diagnostics still says permission is required, reset only this bundle's stale row:
 
 ~~~sh
-tccutil reset Accessibility com.serpcompany.shortcutcoach
+tccutil reset Accessibility com.serp.shortcutcoach
 ~~~
 
 Then relaunch the exact app, request permission, and enable the newly registered row.

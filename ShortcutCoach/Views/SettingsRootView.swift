@@ -6,6 +6,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case presence = "App Presence"
     case permissions = "Permissions"
     case diagnostics = "Diagnostics"
+    case about = "About"
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .presence: "macwindow"
         case .permissions: "hand.raised"
         case .diagnostics: "stethoscope"
+        case .about: "info.circle"
         }
     }
 }
@@ -39,11 +41,44 @@ struct SettingsRootView: View {
                 case .presence: AppPresenceSettingsView()
                 case .permissions: PermissionSettingsView()
                 case .diagnostics: DiagnosticsView()
+                case .about: AboutView()
                 }
             }
             .environment(model)
         }
         .navigationTitle("Shortcut Coach")
+    }
+}
+
+private struct AboutView: View {
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(ProductIdentity.inAppBrandImageName)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.primary)
+                .frame(width: 112, height: 112)
+                .accessibilityHidden(true)
+            Text(ProductIdentity.productName)
+                .font(.largeTitle.bold())
+            Text("Turn manual actions into keyboard-shortcut habits.")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text("Version \(version)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Text("SERP · © 2026")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(48)
+        .navigationTitle("About")
+        .accessibilityElement(children: .combine)
     }
 }
 

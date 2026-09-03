@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Adopted the approved SERP arrow across the app icon, menu bar, inbox, and About view.
+- Finalized the production identity as `com.serp.shortcutcoach` with migration from both earlier bundle identifiers.
+- Prepared version 1.0.0, build 1, hardened runtime, and a sandboxed Mac App Store Release configuration.
 - Moved to the fresh `com.serpcompany.shortcutcoach` identity to clear corrupted macOS status-item state.
 - Migrated existing notification-channel and Dock preferences from the previous bundle identity.
 - Replaced the hidden SwiftUI menu extra with a compact native Coaching Inbox status item.

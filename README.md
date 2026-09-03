@@ -52,4 +52,8 @@ xcodebuild \
   test
 ~~~
 
-The working product name is **Shortcut Coach** and the bundle identifier is **com.serpcompany.shortcutcoach**.
+The product name is **Shortcut Coach** and the production bundle identifier is **com.serp.shortcutcoach**.
+
+## Release status
+
+Version 1.0 release assets and canonical App Store metadata live under [`brand`](brand), [`metadata`](metadata), and [`release`](release). The sandboxed Mac App Store build currently fails the clean Accessibility authorization gate, so it must not be uploaded. The repository includes a release-quality `ShortcutCoach-DeveloperID` fallback configuration for notarized direct distribution.

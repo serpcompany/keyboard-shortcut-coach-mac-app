@@ -1,6 +1,10 @@
 name: ShortcutCoach
+configs:
+  Debug: debug
+  Release: release
+  DeveloperID: release
 options:
-  bundleIdPrefix: com.serpcompany
+  bundleIdPrefix: com.serp
   deploymentTarget:
     macOS: "14.0"
 settings:
@@ -10,6 +14,9 @@ settings:
     CODE_SIGN_IDENTITY: "Developer ID Application: Matthew Schumacher (847HR8U8D9)"
     DEVELOPMENT_TEAM: 847HR8U8D9
     MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: 1
+    ENABLE_HARDENED_RUNTIME: YES
 targets:
   ShortcutCoach:
     type: application
@@ -18,13 +25,27 @@ targets:
       - ShortcutCoach
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.serpcompany.shortcutcoach
+        PRODUCT_BUNDLE_IDENTIFIER: com.serp.shortcutcoach
         PRODUCT_NAME: ShortcutCoach
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Shortcut Coach
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_LSUIElement: NO
-        ENABLE_APP_SANDBOX: NO
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 SERP. All rights reserved.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          ENABLE_APP_SANDBOX: NO
+        Release:
+          CODE_SIGN_IDENTITY: Apple Distribution
+          CODE_SIGN_ENTITLEMENTS: ShortcutCoach/Resources/ShortcutCoach-AppStore.entitlements
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+          ENABLE_APP_SANDBOX: YES
+        DeveloperID:
+          CODE_SIGN_IDENTITY: "Developer ID Application: Matthew Schumacher (847HR8U8D9)"
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+          ENABLE_APP_SANDBOX: NO
   ShortcutCoachTests:
     type: bundle.unit-test
     platform: macOS
@@ -34,7 +55,7 @@ targets:
       - target: ShortcutCoach
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.serpcompany.shortcutcoach.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.serp.shortcutcoach.tests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   ShortcutCoach:
@@ -45,3 +66,11 @@ schemes:
     test:
       targets:
         - ShortcutCoachTests
+  ShortcutCoach-DeveloperID:
+    build:
+      targets:
+        ShortcutCoach: all
+    run:
+      config: DeveloperID
+    archive:
+      config: DeveloperID

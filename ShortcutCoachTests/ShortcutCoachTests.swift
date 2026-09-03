@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import ShortcutCoach
 
@@ -99,24 +100,41 @@ final class ShortcutCoachTests: XCTestCase {
         XCTAssertEqual(restored.selectedChannels, [.dockBadge, .sound])
     }
 
-    func testPreferencesMigrateFromThePreviousBundleIdentity() {
-        let currentSuite = "ShortcutCoachTests-current-\(UUID().uuidString)"
-        let legacySuite = "ShortcutCoachTests-legacy-\(UUID().uuidString)"
-        let current = UserDefaults(suiteName: currentSuite)!
-        let legacy = UserDefaults(suiteName: legacySuite)!
-        defer {
-            current.removePersistentDomain(forName: currentSuite)
-            legacy.removePersistentDomain(forName: legacySuite)
+    func testPreferencesMigrateFromEitherPreviousBundleIdentity() {
+        for sourceIndex in 0..<2 {
+            let currentSuite = "ShortcutCoachTests-current-\(UUID().uuidString)"
+            let oldestSuite = "ShortcutCoachTests-oldest-\(UUID().uuidString)"
+            let recentSuite = "ShortcutCoachTests-recent-\(UUID().uuidString)"
+            let current = UserDefaults(suiteName: currentSuite)!
+            let oldest = UserDefaults(suiteName: oldestSuite)!
+            let recent = UserDefaults(suiteName: recentSuite)!
+            defer {
+                current.removePersistentDomain(forName: currentSuite)
+                oldest.removePersistentDomain(forName: oldestSuite)
+                recent.removePersistentDomain(forName: recentSuite)
+            }
+            let source = [recent, oldest][sourceIndex]
+            source.set([NotificationChannel.topCenterShelf.rawValue, NotificationChannel.sound.rawValue], forKey: "selectedNotificationChannels")
+            source.set(false, forKey: "showInDockAndSwitcher")
+
+            let migrated = AppPreferences(defaults: current, legacyDefaults: [recent, oldest])
+
+            XCTAssertEqual(migrated.selectedChannels, [.topCenterShelf, .sound])
+            XCTAssertFalse(migrated.showInDockAndSwitcher)
+            XCTAssertEqual(current.array(forKey: "selectedNotificationChannels") as? [String], ["sound", "topCenterShelf"])
+            XCTAssertEqual(current.bool(forKey: "showInDockAndSwitcher"), false)
         }
-        legacy.set([NotificationChannel.topCenterShelf.rawValue, NotificationChannel.sound.rawValue], forKey: "selectedNotificationChannels")
-        legacy.set(false, forKey: "showInDockAndSwitcher")
+    }
 
-        let migrated = AppPreferences(defaults: current, legacyDefaults: legacy)
-
-        XCTAssertEqual(migrated.selectedChannels, [.topCenterShelf, .sound])
-        XCTAssertFalse(migrated.showInDockAndSwitcher)
-        XCTAssertEqual(current.array(forKey: "selectedNotificationChannels") as? [String], ["sound", "topCenterShelf"])
-        XCTAssertEqual(current.bool(forKey: "showInDockAndSwitcher"), false)
+    func testSERPProductIdentityConfiguresTheBrandedStatusItem() {
+        XCTAssertEqual(ProductIdentity.bundleIdentifier, "com.serp.shortcutcoach")
+        XCTAssertEqual(
+            ProductIdentity.legacyBundleIdentifiers,
+            ["com.serpcompany.shortcutcoach", "co.serp.shortcutcoach"]
+        )
+        XCTAssertEqual(ProductIdentity.statusItemImageName, "SERPMenuBarMark")
+        XCTAssertEqual(ProductIdentity.accessibilityName, "Shortcut Coach")
+        XCTAssertNotNil(NSImage(named: ProductIdentity.statusItemImageName))
     }
 
     func testEveryPresentationChannelHasStableCopyAndIdentity() {
