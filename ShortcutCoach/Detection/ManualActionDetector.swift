@@ -52,10 +52,10 @@ final class ManualActionDetector {
     private let monitor: any PointerEventMonitoring
     private let snapshotter: AccessibilitySnapshotter
     private let permissions: any DetectorPermissionProviding
-    private let chromeAdapter = ChromeActionAdapter()
+    private let chromeRuntimeReader: any ChromeRuntimeStateReading
     private let windowControlMonitor = StandardWindowControlMonitor()
     private let finderTrashMonitor = FinderTrashMonitor()
-    private var correlator = ActionCorrelator()
+    private var chromeClickDetector = ChromeClickDetector()
     private var generation = 0
     private var downSnapshotPending = false
     private var bufferedMouseUp: PointerSample?
@@ -76,11 +76,13 @@ final class ManualActionDetector {
     init(
         monitor: any PointerEventMonitoring = PointerEventMonitor(),
         snapshotter: AccessibilitySnapshotter = AccessibilitySnapshotter(),
-        permissions: any DetectorPermissionProviding = SystemDetectorPermissions()
+        permissions: any DetectorPermissionProviding = SystemDetectorPermissions(),
+        chromeRuntimeReader: any ChromeRuntimeStateReading = SystemChromeRuntimeStateReader()
     ) {
         self.monitor = monitor
         self.snapshotter = snapshotter
         self.permissions = permissions
+        self.chromeRuntimeReader = chromeRuntimeReader
     }
 
     func requestAccessibilityPermission() {
@@ -107,7 +109,7 @@ final class ManualActionDetector {
         monitor.onTapRecovered = { [weak self] in
             self?.windowControlMonitor.cancel()
             self?.finderTrashMonitor.cancel()
-            DispatchQueue.main.async { self?.correlator.cancel() }
+            DispatchQueue.main.async { _ = self?.chromeClickDetector.receive(.cancelled) }
         }
         windowControlMonitor.onEvent = { [weak self] event in self?.onEvent?(event) }
         finderTrashMonitor.onEvent = { [weak self] event in self?.onEvent?(event) }
@@ -122,7 +124,7 @@ final class ManualActionDetector {
         monitor.stop()
         windowControlMonitor.cancel()
         finderTrashMonitor.cancel()
-        correlator.cancel()
+        _ = chromeClickDetector.receive(.cancelled)
         downSnapshotPending = false
         bufferedMouseUp = nil
         bufferedDragLocations.removeAll()
@@ -136,9 +138,9 @@ final class ManualActionDetector {
             if downSnapshotPending {
                 bufferedDragLocations.append(sample.location)
             } else {
-                correlator.observeDrag(to: sample.location)
+                _ = chromeClickDetector.receive(.dragged(sample))
             }
-        case .cancelled: correlator.cancel()
+        case .cancelled: _ = chromeClickDetector.receive(.cancelled)
         case .down:
             downSnapshotPending = true
             bufferedMouseUp = nil
@@ -152,7 +154,22 @@ final class ManualActionDetector {
                     self.bufferedDragLocations.removeAll()
                     return
                 }
-                if let shortcut = snapshot.hit.menuShortcut,
+                let runtimeRequirement = self.chromeClickDetector.runtimeRequirement(for: snapshot)
+                let chromeRuntime = self.chromeRuntimeReader.read(pid: snapshot.pid, requirement: runtimeRequirement)
+                let chromeOutcome = self.chromeClickDetector.receive(.down(sample, snapshot, chromeRuntime))
+                let isChromeSettings = runtimeRequirement == .settings
+                if self.chromeClickDetector.hasPendingCandidate {
+                    for location in self.bufferedDragLocations {
+                        let drag = PointerSample(phase: .dragged, location: location, modifiers: sample.modifiers, timestamp: sample.timestamp)
+                        _ = self.chromeClickDetector.receive(.dragged(drag))
+                    }
+                    self.bufferedDragLocations.removeAll()
+                    if let mouseUp = self.bufferedMouseUp {
+                        self.bufferedMouseUp = nil
+                        self.handleMouseUp(mouseUp, generation: currentGeneration)
+                    }
+                } else if !isChromeSettings,
+                   let shortcut = snapshot.hit.menuShortcut,
                    snapshot.hit.role == kAXMenuItemRole as String,
                    let title = snapshot.hit.title, !title.isEmpty {
                     let signature = "\(snapshot.applicationName)|\(title)|\(shortcut)"
@@ -162,16 +179,8 @@ final class ManualActionDetector {
                         self.onEvent?(CoachingEvent(applicationName: snapshot.applicationName, actionTitle: title,
                                                     shortcut: shortcut, pointerX: sample.location.x, pointerY: sample.location.y))
                     }
-                } else if let candidate = self.chromeAdapter.classify(snapshot, point: sample.location) {
-                    self.correlator.begin(candidate, at: sample.timestamp, modifiers: sample.modifiers)
-                    for location in self.bufferedDragLocations {
-                        self.correlator.observeDrag(to: location)
-                    }
-                    self.bufferedDragLocations.removeAll()
-                    if let mouseUp = self.bufferedMouseUp {
-                        self.bufferedMouseUp = nil
-                        self.handleMouseUp(mouseUp, generation: currentGeneration)
-                    }
+                } else if case .event(let event) = chromeOutcome {
+                    self.onEvent?(event)
                 }
             }
         case .up:
@@ -185,14 +194,19 @@ final class ManualActionDetector {
 
     private func handleMouseUp(_ sample: PointerSample, generation currentGeneration: Int) {
         snapshotter.snapshot(at: sample.location) { [weak self] upSnapshot in
-                guard let self, self.generation == currentGeneration,
-                      self.correlator.acceptsMouseUp(sample, hit: upSnapshot) else { return }
+                guard let self, self.generation == currentGeneration else { return }
+                _ = self.chromeClickDetector.receive(.up(sample, upSnapshot))
+                guard self.chromeClickDetector.needsPostObservation else { return }
+                let runtimeRequirement = self.chromeClickDetector.postRuntimeRequirement
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     self.snapshotter.snapshot(at: sample.location) { [weak self] post in
-                        guard let self, self.generation == currentGeneration, let post else {
-                            self?.correlator.cancel(); return
-                        }
-                        if let event = self.correlator.verify(post: post, at: ProcessInfo.processInfo.systemUptime) {
+                        guard let self, self.generation == currentGeneration else { return }
+                        let runtime = post.map {
+                            self.chromeRuntimeReader.read(pid: $0.pid, requirement: runtimeRequirement)
+                        } ?? .unavailable
+                        if case .event(let event) = self.chromeClickDetector.receive(
+                            .post(post, runtime, timestamp: ProcessInfo.processInfo.systemUptime)
+                        ) {
                             self.onEvent?(event)
                         }
                     }

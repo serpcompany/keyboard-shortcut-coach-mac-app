@@ -25,18 +25,12 @@ struct AXNodeSnapshot: Codable, Equatable, Sendable {
     let menuShortcut: String?
 }
 
-struct ChromeTabState: Codable, Equatable, Sendable {
-    let containerToken: String
-    let tabs: [AXNodeSnapshot]
-}
-
 struct AccessibilitySnapshot: Codable, Equatable, Sendable {
     let pid: Int32
     let bundleIdentifier: String?
     let applicationName: String
     let hit: AXNodeSnapshot
     let ancestors: [AXNodeSnapshot]
-    let tabs: ChromeTabState?
     var hitAndAncestors: [AXNodeSnapshot] { [hit] + ancestors }
 }
 
@@ -61,7 +55,6 @@ final class AccessibilitySnapshotter {
         guard AXUIElementGetPid(hit, &pid) == .success else { return nil }
         let app = NSRunningApplication(processIdentifier: pid)
         let bundleIdentifier = app?.bundleIdentifier
-        let applicationElement = AXUIElementCreateApplication(pid)
         var ancestors: [(AXUIElement, AXNodeSnapshot)] = []
         var cursor = hit
         for _ in 0..<8 {
@@ -71,42 +64,10 @@ final class AccessibilitySnapshotter {
             cursor = parent
             if node.role == kAXApplicationRole as String { break }
         }
-        let chromeTabs = bundleIdentifier.map(ChromeActionAdapter.bundleIdentifiers.contains) == true
-            ? tabState(hit: hit, ancestors: ancestors, application: applicationElement) : nil
+        let hitSnapshot = nodeSnapshot(hit)
         return AccessibilitySnapshot(pid: pid, bundleIdentifier: bundleIdentifier,
                                      applicationName: app?.localizedName ?? "Current app",
-                                     hit: nodeSnapshot(hit), ancestors: ancestors.map(\.1),
-                                     tabs: chromeTabs)
-    }
-
-    private func tabState(hit: AXUIElement, ancestors: [(AXUIElement, AXNodeSnapshot)], application: AXUIElement) -> ChromeTabState? {
-        let candidates = [hit] + ancestors.map(\.0) + [application]
-        for candidate in candidates {
-            if let state = tabState(fromContainer: candidate) { return state }
-        }
-        for root in candidates.prefix(4) {
-            var frontier = children(of: root)
-            var visited = 0
-            while !frontier.isEmpty && visited < 400 {
-                let element = frontier.removeFirst()
-                visited += 1
-                if let state = tabState(fromContainer: element) { return state }
-                if visited < 300 { frontier.append(contentsOf: children(of: element)) }
-            }
-        }
-        return nil
-    }
-
-    private func tabState(fromContainer element: AXUIElement) -> ChromeTabState? {
-        let tabNodes = children(of: element).map(nodeSnapshot).filter {
-            $0.role == kAXRadioButtonRole as String || $0.role == "AXTab"
-        }
-        guard !tabNodes.isEmpty, tabNodes.contains(where: { $0.selected == true || $0.value == "1" }) else { return nil }
-        return ChromeTabState(containerToken: token(for: element), tabs: tabNodes)
-    }
-
-    private func children(of element: AXUIElement) -> [AXUIElement] {
-        attribute(kAXChildrenAttribute, from: element) ?? []
+                                     hit: hitSnapshot, ancestors: ancestors.map(\.1))
     }
 
     private func nodeSnapshot(_ element: AXUIElement) -> AXNodeSnapshot {

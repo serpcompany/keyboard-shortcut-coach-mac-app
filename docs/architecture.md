@@ -9,7 +9,7 @@ PointerEventMonitor (listen-only down/up/drag)
 AccessibilitySnapshotter (bounded AX context)
         |
         v
-ChromeActionAdapter + ActionCorrelator
+ChromeActionAdapter + SystemChromeRuntimeStateReader + ActionCorrelator
         |
         +--> StandardWindowControlMonitor (retained-window postconditions)
         |
@@ -28,6 +28,8 @@ NotificationDeliveryService
 ~~~
 
 Synthetic previews and real detector events share NotificationDeliveryService. A preview can prove a presentation adapter, but only human-observed pointer input can prove the detector boundary. Software can post Core Graphics events, so the app does not claim cryptographic hardware provenance.
+
+`AccessibilitySnapshotter` is app-agnostic: it records only the bounded hit element and ancestor chain. Chrome application-tree reads live behind `ChromeRuntimeStateReading`; the system adapter resolves tab state, native menu-command metadata, and an immediately sanitized destination class. `ChromeActionAdapter` and `ActionCorrelator` own all Chrome semantic matching and postconditions.
 
 ## Module ownership
 

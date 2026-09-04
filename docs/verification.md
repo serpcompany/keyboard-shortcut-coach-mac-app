@@ -33,11 +33,11 @@ Runtime evidence is stored under [docs/evidence/foundation](evidence/foundation/
 
 ## Chrome non-menu detector branch
 
-Issue #10 adds deterministic classification and correlation coverage for Chrome New Tab, selected-tab Close, direct tab selection, and Settings, including required negative controls. Issues #15 and #16 add production monitors and policy tests for Finder-to-Trash and standard window controls. Unit tests and a signed build do not prove every real-pointer behavior against live application AX trees; each new action remains a human acceptance step before merge.
+Issue #10 adds deterministic classification and correlation coverage for Chrome New Tab, selected-tab Close, and direct tab selection. Issue #14 replays the sanitized failing Chrome Settings trace through the production click-detector seam, resolves Settings from the live native application menu without a static fallback, and requires a derived Settings navigation postcondition. Issues #15 and #16 add production monitors and policy tests for Finder-to-Trash and standard window controls. Deterministic tests and a signed build do not by themselves prove that live system adapters still match a target application's current AX tree.
 
 ## Explicitly unproven
 
-- Human physical-pointer acceptance of Chrome Close/Settings, window controls, and Finder-to-Trash detection.
+- Fresh installed-build physical-pointer acceptance of Chrome Close/Settings, window controls, and Finder-to-Trash detection.
 - Browser-toolbar controls and non-menu controls outside the implemented slices.
 - Broad application compatibility.
 - Native banner authorization and appearance.
@@ -51,7 +51,7 @@ Do not convert an implemented or synthetic status into a broad working claim.
 
 - The final SERP icon, menu-bar mark, and About presentation are built from the maintainer-supplied vector source.
 - Product identity is `com.serp.shortcutcoach`; deterministic coverage verifies migration from `com.serpcompany.shortcutcoach` and `co.serp.shortcutcoach`.
-- The complete suite passes 28 tests.
+- The complete suite passes 43 tests on the integrated branch.
 - A universal sandboxed Release build passes strict code-sign and static entitlement inspection.
 - The Mac App Store gate is blocked: after a clean Accessibility reset, the sandboxed Release cannot open Apple's Accessibility authorization warning service, while the otherwise equivalent unsandboxed control can. See [`release/evidence/sandbox-permission-gate.md`](../release/evidence/sandbox-permission-gate.md).
 - Canonical metadata and five truthful static Release screenshots validate locally. Dark menu-bar, Dock/Finder icon, Inbox access, Settings navigation, and two real presentation previews are indexed under `release/evidence`. Light menu-bar appearance remains a human check because changing the maintainer's global Appearance setting was outside the automated capture; live coaching remains blocked until the physical detector gate passes.
