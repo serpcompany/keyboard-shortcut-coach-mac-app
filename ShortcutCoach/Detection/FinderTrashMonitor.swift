@@ -3,37 +3,58 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
+enum FinderTrashItemEligibility: String, Equatable, Sendable {
+    case supportedRegularItem
+    case multipleSelection
+    case volume
+    case alias
+    case lockedOrImmutable
+    case externalOrNetwork
+    case readOnly
+    case unknown
+}
+
+enum FinderTrashPostcondition: String, Equatable, Sendable {
+    case removedFromOriginalParent
+    case stillPresent
+    case inaccessible
+}
+
 struct FinderTrashObservation: Equatable, Sendable {
-    let sourceIsFinderItem: Bool
-    let targetIsDockTrash: Bool
+    let itemEligibility: FinderTrashItemEligibility
+    let releasedOnDockTrash: Bool
     let meaningfulDrag: Bool
     let modifiersPresent: Bool
-    let sourceDisappeared: Bool
+    let postcondition: FinderTrashPostcondition
 }
 
 enum FinderTrashPolicy {
     static func event(from observation: FinderTrashObservation) -> CoachingEvent? {
-        guard observation.sourceIsFinderItem,
-              observation.targetIsDockTrash,
+        guard observation.itemEligibility == .supportedRegularItem,
+              observation.releasedOnDockTrash,
               observation.meaningfulDrag,
               !observation.modifiersPresent,
-              observation.sourceDisappeared else { return nil }
+              observation.postcondition == .removedFromOriginalParent else { return nil }
         return CoachingEvent(applicationName: "Finder", actionTitle: "Move to Trash", shortcut: "⌘⌫")
     }
 }
 
 final class FinderTrashMonitor {
+    private enum SelectionStatus { case exactlyOne, multiple, unknown }
+
     private final class Session {
         let source: AXUIElement
         let parent: AXUIElement?
+        let itemEligibility: FinderTrashItemEligibility
         let down: CGPoint
-        let modifiersPresent: Bool
+        var modifiersPresent: Bool
         var maximumTravel: CGFloat = 0
-        var sawTrash = false
 
-        init(source: AXUIElement, parent: AXUIElement?, down: CGPoint, modifiersPresent: Bool) {
+        init(source: AXUIElement, parent: AXUIElement?, itemEligibility: FinderTrashItemEligibility,
+             down: CGPoint, modifiersPresent: Bool) {
             self.source = source
             self.parent = parent
+            self.itemEligibility = itemEligibility
             self.down = down
             self.modifiersPresent = modifiersPresent
         }
@@ -58,21 +79,21 @@ final class FinderTrashMonitor {
             begin(sample)
         case .dragged:
             guard let session else { return }
+            session.modifiersPresent = session.modifiersPresent || hasModifiers(sample.modifiers)
             session.maximumTravel = max(session.maximumTravel, hypot(sample.location.x - session.down.x, sample.location.y - session.down.y))
-            if isDockTrash(at: sample.location) { session.sawTrash = true }
         case .up:
             guard let current = session else { return }
-            let targetIsTrash = current.sawTrash || isDockTrash(at: sample.location)
+            let targetIsTrash = isDockTrash(at: sample.location)
             let modified = current.modifiersPresent || hasModifiers(sample.modifiers)
             let meaningful = current.maximumTravel >= 8
             queue.asyncAfter(deadline: .now() + 0.45) { [weak self, weak current] in
                 guard let self, let current, self.session === current else { return }
                 let observation = FinderTrashObservation(
-                    sourceIsFinderItem: true,
-                    targetIsDockTrash: targetIsTrash,
+                    itemEligibility: current.itemEligibility,
+                    releasedOnDockTrash: targetIsTrash,
                     meaningfulDrag: meaningful,
                     modifiersPresent: modified,
-                    sourceDisappeared: self.sourceDisappeared(current)
+                    postcondition: self.postcondition(for: current)
                 )
                 self.session = nil
                 if let event = FinderTrashPolicy.event(from: observation) {
@@ -89,10 +110,12 @@ final class FinderTrashMonitor {
         guard !hasModifiers(sample.modifiers),
               let hit = element(at: sample.location),
               applicationBundle(for: hit) == "com.apple.finder",
-              isFinderItem(hit),
-              !isVolume(hit) else { return }
+              isFinderItem(hit) else { return }
         let parent: AXUIElement? = attribute(kAXParentAttribute, from: hit)
-        session = Session(source: hit, parent: parent, down: sample.location, modifiersPresent: false)
+        let eligibility = itemEligibility(of: hit, parent: parent)
+        guard eligibility == .supportedRegularItem else { return }
+        session = Session(source: hit, parent: parent, itemEligibility: eligibility,
+                          down: sample.location, modifiersPresent: false)
     }
 
     private func isFinderItem(_ element: AXUIElement) -> Bool {
@@ -100,10 +123,39 @@ final class FinderTrashMonitor {
         return [kAXImageRole as String, kAXRowRole as String, kAXCellRole as String].contains(role)
     }
 
-    private func isVolume(_ element: AXUIElement) -> Bool {
-        guard let url = elementURL(element),
-              let values = try? url.resourceValues(forKeys: [.isVolumeKey]) else { return false }
-        return values.isVolume == true
+    private func itemEligibility(of element: AXUIElement, parent: AXUIElement?) -> FinderTrashItemEligibility {
+        switch settledSelectionStatus(element, parent: parent) {
+        case .multiple: return .multipleSelection
+        case .unknown: return .unknown
+        case .exactlyOne: break
+        }
+        guard let url = elementURL(element), url.isFileURL,
+              let values = try? url.resourceValues(forKeys: [
+                .isRegularFileKey, .isDirectoryKey, .isSymbolicLinkKey, .isAliasFileKey,
+                .isVolumeKey, .isWritableKey, .volumeIsLocalKey, .volumeIsReadOnlyKey,
+                .isUserImmutableKey, .isSystemImmutableKey
+              ]) else { return .unknown }
+        if values.isVolume == true { return .volume }
+        if values.isAliasFile == true || values.isSymbolicLink == true { return .alias }
+        if values.isUserImmutable == true || values.isSystemImmutable == true { return .lockedOrImmutable }
+        guard values.volumeIsLocal == true else { return .externalOrNetwork }
+        guard values.isWritable == true, values.volumeIsReadOnly == false else { return .readOnly }
+        guard values.isRegularFile == true || values.isDirectory == true else { return .unknown }
+        return .supportedRegularItem
+    }
+
+    private func settledSelectionStatus(_ element: AXUIElement, parent: AXUIElement?) -> SelectionStatus {
+        if let selected: Bool = attribute(kAXSelectedAttribute, from: element), !selected { return .unknown }
+        var cursor = parent
+        for _ in 0..<8 {
+            guard let candidate = cursor else { break }
+            if let selected: [AXUIElement] = attribute(kAXSelectedChildrenAttribute, from: candidate) {
+                if selected.count > 1 { return .multiple }
+                return selected.count == 1 && selected.contains { CFEqual($0, element) } ? .exactlyOne : .unknown
+            }
+            cursor = attribute(kAXParentAttribute, from: candidate)
+        }
+        return .unknown
     }
 
     private func isDockTrash(at point: CGPoint) -> Bool {
@@ -117,12 +169,12 @@ final class FinderTrashMonitor {
         return false
     }
 
-    private func sourceDisappeared(_ session: Session) -> Bool {
-        var role: CFTypeRef?
-        if AXUIElementCopyAttributeValue(session.source, kAXRoleAttribute as CFString, &role) != .success { return true }
-        guard let parent = session.parent else { return false }
-        let children: [AXUIElement] = attribute(kAXChildrenAttribute, from: parent) ?? []
-        return !children.contains { CFEqual($0, session.source) }
+    private func postcondition(for session: Session) -> FinderTrashPostcondition {
+        guard let parent = session.parent else { return .inaccessible }
+        var rawChildren: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(parent, kAXChildrenAttribute as CFString, &rawChildren) == .success,
+              let children = rawChildren as? [AXUIElement] else { return .inaccessible }
+        return children.contains { CFEqual($0, session.source) } ? .stillPresent : .removedFromOriginalParent
     }
 
     private func hasModifiers(_ flags: CGEventFlags) -> Bool {
