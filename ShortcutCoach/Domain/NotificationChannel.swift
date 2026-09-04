@@ -60,6 +60,24 @@ enum NotificationChannel: String, Codable, CaseIterable, Identifiable, Sendable 
     }
 }
 
+enum PresentationOverlapPolicy {
+    static let topCenterChannels: Set<NotificationChannel> = [
+        .topCenterShelf,
+        .statusFeedback,
+        .decisionBanner
+    ]
+
+    static func selecting(
+        _ channel: NotificationChannel,
+        in channels: Set<NotificationChannel>
+    ) -> Set<NotificationChannel> {
+        guard topCenterChannels.contains(channel) else {
+            return channels.union([channel])
+        }
+        return channels.subtracting(topCenterChannels).union([channel])
+    }
+}
+
 enum DeliveryOutcome: Equatable, Sendable {
     case delivered
     case failed(String)
@@ -70,4 +88,3 @@ struct DeliveryReport: Equatable, Sendable {
     let inboxRecorded: Bool
     let outcomes: [NotificationChannel: DeliveryOutcome]
 }
-

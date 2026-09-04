@@ -52,7 +52,7 @@ final class AppPreferences {
 
     func set(_ channel: NotificationChannel, enabled: Bool) {
         if enabled {
-            selectedChannels.insert(channel)
+            selectedChannels = PresentationOverlapPolicy.selecting(channel, in: selectedChannels)
         } else {
             selectedChannels.remove(channel)
         }

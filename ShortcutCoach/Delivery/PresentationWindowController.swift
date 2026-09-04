@@ -2,9 +2,48 @@ import AppKit
 import SwiftUI
 
 @MainActor
+protocol KeyboardEventMonitoring: AnyObject {
+    func start(handler: @escaping (UInt16) -> Bool)
+    func stop()
+}
+
+@MainActor
+final class LocalKeyboardEventMonitor: KeyboardEventMonitoring {
+    private var token: Any?
+
+    func start(handler: @escaping (UInt16) -> Bool) {
+        guard token == nil else { return }
+        token = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            handler(event.keyCode) ? nil : event
+        }
+    }
+
+    func stop() {
+        guard let token else { return }
+        NSEvent.removeMonitor(token)
+        self.token = nil
+    }
+}
+
+@MainActor
 final class PresentationWindowController {
     private var panels: [NotificationChannel: NSPanel] = [:]
     private var dismissalTasks: [NotificationChannel: Task<Void, Never>] = [:]
+    private let keyboardMonitor: any KeyboardEventMonitoring
+
+    init(keyboardMonitor: (any KeyboardEventMonitoring)? = nil) {
+        let keyboardMonitor = keyboardMonitor ?? LocalKeyboardEventMonitor()
+        self.keyboardMonitor = keyboardMonitor
+        keyboardMonitor.start { [weak self] keyCode in
+            self?.handleKeyDown(keyCode: keyCode) ?? false
+        }
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            keyboardMonitor.stop()
+        }
+    }
 
     func show(event: CoachingEvent, style: NotificationChannel) {
         guard style != .nativeBanner,
@@ -13,7 +52,12 @@ final class PresentationWindowController {
               style != .sound else { return }
 
         dismissalTasks[style]?.cancel()
-        panels[style]?.orderOut(nil)
+        dismiss(style)
+        if PresentationOverlapPolicy.topCenterChannels.contains(style) {
+            for conflictingStyle in PresentationOverlapPolicy.topCenterChannels where conflictingStyle != style {
+                dismiss(conflictingStyle)
+            }
+        }
 
         let size = panelSize(for: style)
         let panel = NSPanel(
@@ -43,9 +87,26 @@ final class PresentationWindowController {
             let delay = dismissalDelayNanoseconds(for: style)
             try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled else { return }
-            panel?.orderOut(nil)
-            panels[style] = nil
+            guard panels[style] === panel else { return }
+            dismiss(style)
         }
+    }
+
+    @discardableResult
+    func handleKeyDown(keyCode: UInt16) -> Bool {
+        guard keyCode == 53, !panels.isEmpty else { return false }
+        dismissAll()
+        return true
+    }
+
+    func dismissAll() {
+        for style in Array(panels.keys) {
+            dismiss(style)
+        }
+    }
+
+    var activeChannels: Set<NotificationChannel> {
+        Set(panels.keys)
     }
 
     func panelSize(for style: NotificationChannel) -> NSSize {
@@ -66,6 +127,13 @@ final class PresentationWindowController {
 
     func dismissalDelayNanoseconds(for style: NotificationChannel) -> UInt64 {
         style == .decisionBanner ? 8_000_000_000 : 4_000_000_000
+    }
+
+    private func dismiss(_ style: NotificationChannel) {
+        dismissalTasks[style]?.cancel()
+        dismissalTasks[style] = nil
+        panels[style]?.orderOut(nil)
+        panels[style] = nil
     }
 
     private func origin(for style: NotificationChannel, size: NSSize, event: CoachingEvent) -> NSPoint {

@@ -27,6 +27,54 @@ private final class StatusItemActionTarget: NSObject {
     @objc func activate(_ sender: NSStatusBarButton) {}
 }
 
+@MainActor
+private final class StubNativeNotificationCenter: NativeNotificationCenterClient {
+    var status: NativeNotificationAuthorization
+    var requestedStatus: NativeNotificationAuthorization?
+    var requestResult = true
+    private(set) var requestCount = 0
+    private(set) var added: [(identifier: String, title: String, body: String)] = []
+
+    init(status: NativeNotificationAuthorization) {
+        self.status = status
+    }
+
+    func authorizationStatus() async -> NativeNotificationAuthorization {
+        status
+    }
+
+    func requestAuthorization() async throws -> Bool {
+        requestCount += 1
+        if let requestedStatus { status = requestedStatus }
+        return requestResult
+    }
+
+    func add(identifier: String, title: String, body: String) async throws {
+        added.append((identifier, title, body))
+    }
+}
+
+@MainActor
+private final class StubKeyboardEventMonitor: KeyboardEventMonitoring {
+    private var handler: ((UInt16) -> Bool)?
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func start(handler: @escaping (UInt16) -> Bool) {
+        startCount += 1
+        self.handler = handler
+    }
+
+    func stop() {
+        stopCount += 1
+        handler = nil
+    }
+
+    func send(keyCode: UInt16) -> Bool {
+        handler?(keyCode) ?? false
+    }
+}
+
 private final class StubDetectorPermissions: DetectorPermissionProviding {
     var isAccessibilityTrusted: Bool
     var isInputMonitoringAuthorized: Bool
@@ -220,6 +268,122 @@ final class ShortcutCoachTests: XCTestCase {
         }
     }
 
+    func testNativeNotificationDeliversExactEventCopyWhenAlreadyAuthorized() async throws {
+        let center = StubNativeNotificationCenter(status: .authorized)
+        let adapter = NativeNotificationAdapter(center: center)
+        let event = CoachingEvent.sample
+
+        try await adapter.deliver(event)
+
+        XCTAssertEqual(center.requestCount, 0)
+        XCTAssertEqual(center.added.count, 1)
+        XCTAssertEqual(center.added.first?.identifier, event.id.uuidString)
+        XCTAssertEqual(center.added.first?.title, event.coachingTitle)
+        XCTAssertEqual(center.added.first?.body, event.coachingBody)
+    }
+
+    func testNativeNotificationRequestsUndeterminedAuthorizationBeforeDelivery() async throws {
+        let center = StubNativeNotificationCenter(status: .notDetermined)
+        center.requestedStatus = .provisional
+        let adapter = NativeNotificationAdapter(center: center)
+
+        try await adapter.deliver(.sample)
+
+        XCTAssertEqual(center.requestCount, 1)
+        XCTAssertEqual(center.added.count, 1)
+    }
+
+    func testNativeNotificationDoesNotSubmitWhenAuthorizationIsDenied() async {
+        for status in [NativeNotificationAuthorization.denied, .unknown] {
+            let center = StubNativeNotificationCenter(status: status)
+            let adapter = NativeNotificationAdapter(center: center)
+
+            do {
+                try await adapter.deliver(.sample)
+                XCTFail("Expected denied authorization to fail")
+            } catch {
+                XCTAssertEqual(error as? DeliveryAdapterError, .notificationsDenied)
+            }
+            XCTAssertEqual(center.requestCount, 0)
+            XCTAssertTrue(center.added.isEmpty)
+        }
+    }
+
+    func testNativeNotificationHonorsARejectedAuthorizationRequest() async {
+        let center = StubNativeNotificationCenter(status: .notDetermined)
+        center.requestResult = false
+        let adapter = NativeNotificationAdapter(center: center)
+
+        do {
+            try await adapter.deliver(.sample)
+            XCTFail("Expected rejected authorization to fail")
+        } catch {
+            XCTAssertEqual(error as? DeliveryAdapterError, .notificationsDenied)
+        }
+        XCTAssertEqual(center.requestCount, 1)
+        XCTAssertTrue(center.added.isEmpty)
+    }
+
+    func testDockBadgeWritesCurrentUnreadCount() async throws {
+        var label: String?
+        let adapter = DockBadgeAdapter(unreadCount: { 12 }, setBadgeLabel: { label = $0 })
+
+        try await adapter.deliver(.sample)
+
+        XCTAssertEqual(label, "12")
+    }
+
+    func testDockBounceRequestsInformationalAttention() async throws {
+        var requestedType: NSApplication.RequestUserAttentionType?
+        let adapter = DockBounceAdapter(requestAttention: { requestedType = $0 })
+
+        try await adapter.deliver(.sample)
+
+        XCTAssertEqual(requestedType, .informationalRequest)
+    }
+
+    func testSoundInvokesGlassAndReportsUnavailablePlayback() async throws {
+        var playedName: NSSound.Name?
+        let successful = SoundAdapter(playSound: {
+            playedName = $0
+            return true
+        })
+        try await successful.deliver(.sample)
+        XCTAssertEqual(playedName, NSSound.Name("Glass"))
+
+        let unavailable = SoundAdapter(playSound: { _ in false })
+        do {
+            try await unavailable.deliver(.sample)
+            XCTFail("Expected unavailable sound to fail")
+        } catch {
+            XCTAssertEqual(error as? DeliveryAdapterError, .soundUnavailable)
+        }
+    }
+
+    func testEscapeDismissesCustomPanelsAndOtherKeysPassThrough() {
+        let keyboard = StubKeyboardEventMonitor()
+        let controller = PresentationWindowController(keyboardMonitor: keyboard)
+
+        controller.show(event: .sample, style: .topRightToast)
+        controller.show(event: .sample, style: .pointerCard)
+        XCTAssertEqual(controller.activeChannels, [.topRightToast, .pointerCard])
+        XCTAssertFalse(keyboard.send(keyCode: 36))
+        XCTAssertEqual(controller.activeChannels, [.topRightToast, .pointerCard])
+
+        XCTAssertTrue(keyboard.send(keyCode: 53))
+        XCTAssertTrue(controller.activeChannels.isEmpty)
+    }
+
+    func testTopCenterPresentationsReplaceOneAnotherWithoutAffectingOtherAnchors() {
+        let controller = PresentationWindowController(keyboardMonitor: StubKeyboardEventMonitor())
+
+        controller.show(event: .sample, style: .topRightToast)
+        controller.show(event: .sample, style: .topCenterShelf)
+        controller.show(event: .sample, style: .decisionBanner)
+
+        XCTAssertEqual(controller.activeChannels, [.topRightToast, .decisionBanner])
+    }
+
     func testInboxUnreadAndPersistenceLifecycle() throws {
         let persistence = MemoryPersistence()
         let inbox = InboxStore(persistence: persistence)
@@ -257,6 +421,23 @@ final class ShortcutCoachTests: XCTestCase {
         let restored = AppPreferences(defaults: defaults)
         XCTAssertFalse(restored.showInDockAndSwitcher)
         XCTAssertEqual(restored.selectedChannels, [.dockBadge, .sound])
+    }
+
+    func testSelectingATopCenterChannelDisablesItsConflictingPeers() {
+        let suite = "ShortcutCoachTests-overlap-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = AppPreferences(defaults: defaults)
+
+        preferences.set(.topCenterShelf, enabled: true)
+        preferences.set(.statusFeedback, enabled: true)
+        preferences.set(.decisionBanner, enabled: true)
+
+        XCTAssertTrue(preferences.selectedChannels.contains(.topRightToast))
+        XCTAssertEqual(
+            preferences.selectedChannels.intersection(PresentationOverlapPolicy.topCenterChannels),
+            [.decisionBanner]
+        )
     }
 
     func testPreferencesMigrateFromEitherPreviousBundleIdentity() {

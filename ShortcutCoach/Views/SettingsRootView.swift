@@ -230,6 +230,11 @@ private struct PresentationChannelsView: View {
                     .padding(.vertical, 3)
                 }
             }
+            Section {
+                Text("Top-center Shelf, Status Feedback, and Decision Banner share one position. Enabling one automatically disables the other two.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("Presentation Channels")
