@@ -273,6 +273,18 @@ private struct PermissionSettingsView: View {
                     Button("Retry Detection") { model.retryDetection() }
                 }
             }
+            Section("Input Monitoring") {
+                LabeledContent("Status") {
+                    Label(model.isInputMonitoringAuthorized ? "Granted" : "Required", systemImage: model.isInputMonitoringAuthorized ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(model.isInputMonitoringAuthorized ? .green : .orange)
+                }
+                Text("Input Monitoring permission lets Shortcut Coach passively observe mouse clicks. It never modifies or suppresses your input.")
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Request Permission") { model.requestInputMonitoringPermission() }
+                    Button("Retry Detection") { model.retryDetection() }
+                }
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("Permissions")
@@ -308,7 +320,12 @@ private struct DiagnosticsView: View {
     private var detectorDescription: String {
         switch model.detectorStatus {
         case .stopped: "Stopped"
-        case .permissionRequired: "Accessibility permission required"
+        case .permissionRequired(let permissions):
+            switch permissions {
+            case [.accessibility]: "Accessibility permission required"
+            case [.inputMonitoring]: "Input Monitoring permission required"
+            default: "Accessibility and Input Monitoring permissions required"
+            }
         case .monitoring: "Monitoring supported manual pointer actions"
         case .failed(let message): "Failed: \(message)"
         }

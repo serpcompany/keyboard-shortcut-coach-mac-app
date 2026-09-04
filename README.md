@@ -6,7 +6,7 @@ This repository is the canonical Shortcut Coach codebase and starting point for 
 
 ## Current MVP
 
-- Detects macOS menu-item clicks, a conservative set of Chrome controls, standard window controls, and verified Finder-to-Trash drags after Accessibility permission is granted.
+- Detects macOS menu-item clicks, a conservative set of Chrome controls, standard window controls, and verified Finder-to-Trash drags after Accessibility and Input Monitoring permissions are granted.
 - Records every coaching event in durable local history.
 - Shows an always-available menu-bar coaching inbox with unread state.
 - Provides ten selectable presentation channels and per-channel previews.
@@ -39,7 +39,7 @@ xcodegen generate
 open ShortcutCoach.xcodeproj
 ~~~
 
-Choose the **ShortcutCoach** scheme and press Run. Use the stable generated Debug bundle; do not mutate or ad-hoc re-sign it after macOS grants Accessibility permission.
+Choose the **ShortcutCoach** scheme and press Run. Use the stable generated Debug bundle; do not mutate or ad-hoc re-sign it after macOS grants Accessibility and Input Monitoring permissions.
 
 ## Verify
 

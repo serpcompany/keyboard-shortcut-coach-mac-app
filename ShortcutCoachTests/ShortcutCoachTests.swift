@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import XCTest
 @testable import ShortcutCoach
 
@@ -26,8 +27,162 @@ private final class StatusItemActionTarget: NSObject {
     @objc func activate(_ sender: NSStatusBarButton) {}
 }
 
+private final class StubDetectorPermissions: DetectorPermissionProviding {
+    var isAccessibilityTrusted: Bool
+    var isInputMonitoringAuthorized: Bool
+    private(set) var accessibilityRequestCount = 0
+    private(set) var inputMonitoringRequestCount = 0
+    var grantsAccessibilityOnRequest = false
+    var grantsInputMonitoringOnRequest = false
+
+    init(accessibility: Bool, inputMonitoring: Bool) {
+        isAccessibilityTrusted = accessibility
+        isInputMonitoringAuthorized = inputMonitoring
+    }
+
+    func requestAccessibility() {
+        accessibilityRequestCount += 1
+        if grantsAccessibilityOnRequest { isAccessibilityTrusted = true }
+    }
+
+    func requestInputMonitoring() {
+        inputMonitoringRequestCount += 1
+        if grantsInputMonitoringOnRequest { isInputMonitoringAuthorized = true }
+    }
+}
+
+private final class StubPointerMonitor: PointerEventMonitoring {
+    var onSample: ((PointerSample) -> Void)?
+    var onTapRecovered: (() -> Void)?
+    var shouldStart = true
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+
+    func start() -> Bool {
+        startCount += 1
+        return shouldStart
+    }
+
+    func stop() {
+        stopCount += 1
+    }
+}
+
+@MainActor
+private struct StubPresenceController: AppPresenceControlling {
+    func apply(showInDockAndSwitcher: Bool) {}
+}
+
 @MainActor
 final class ShortcutCoachTests: XCTestCase {
+    func testAppModelPublishesPermissionAndStatusSnapshotsAfterRequestsAndRetry() async {
+        let suite = "ShortcutCoachTests-permissions-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let permissions = StubDetectorPermissions(accessibility: false, inputMonitoring: false)
+        permissions.grantsAccessibilityOnRequest = true
+        permissions.grantsInputMonitoringOnRequest = true
+        let detector = ManualActionDetector(monitor: StubPointerMonitor(), permissions: permissions)
+        let model = AppModel(
+            releaseLane: .full,
+            preferences: AppPreferences(defaults: defaults),
+            inbox: InboxStore(persistence: MemoryPersistence()),
+            presenceController: StubPresenceController(),
+            detector: detector,
+            presenter: PresentationWindowController()
+        )
+        model.start()
+
+        let accessibilityChanged = expectation(description: "Accessibility snapshot changed")
+        withObservationTracking {
+            _ = model.isAccessibilityTrusted
+            _ = model.detectorStatus
+        } onChange: {
+            accessibilityChanged.fulfill()
+        }
+        model.requestAccessibilityPermission()
+        await fulfillment(of: [accessibilityChanged], timeout: 1)
+        XCTAssertTrue(model.isAccessibilityTrusted)
+        XCTAssertFalse(model.isInputMonitoringAuthorized)
+        XCTAssertEqual(model.detectorStatus, .permissionRequired([.inputMonitoring]))
+
+        let inputMonitoringChanged = expectation(description: "Input Monitoring snapshot changed")
+        withObservationTracking {
+            _ = model.isInputMonitoringAuthorized
+            _ = model.detectorStatus
+        } onChange: {
+            inputMonitoringChanged.fulfill()
+        }
+        model.requestInputMonitoringPermission()
+        await fulfillment(of: [inputMonitoringChanged], timeout: 1)
+        XCTAssertTrue(model.isInputMonitoringAuthorized)
+        XCTAssertEqual(model.detectorStatus, .stopped)
+
+        let statusChanged = expectation(description: "Detector status snapshot changed")
+        withObservationTracking {
+            _ = model.detectorStatus
+        } onChange: {
+            statusChanged.fulfill()
+        }
+        model.retryDetection()
+        await fulfillment(of: [statusChanged], timeout: 1)
+        XCTAssertEqual(model.detectorStatus, .monitoring)
+    }
+
+    func testDetectorRequiresAccessibilityBeforeStartingPointerMonitor() {
+        let permissions = StubDetectorPermissions(accessibility: false, inputMonitoring: true)
+        let monitor = StubPointerMonitor()
+        let detector = ManualActionDetector(monitor: monitor, permissions: permissions)
+
+        detector.start()
+
+        XCTAssertEqual(detector.status, .permissionRequired([.accessibility]))
+        XCTAssertEqual(monitor.startCount, 0)
+    }
+
+    func testDetectorRequiresInputMonitoringBeforeStartingPointerMonitor() {
+        let permissions = StubDetectorPermissions(accessibility: true, inputMonitoring: false)
+        let monitor = StubPointerMonitor()
+        let detector = ManualActionDetector(monitor: monitor, permissions: permissions)
+
+        detector.start()
+
+        XCTAssertEqual(detector.status, .permissionRequired([.inputMonitoring]))
+        XCTAssertEqual(monitor.startCount, 0)
+    }
+
+    func testDetectorReportsMonitoringOnlyAfterBothPermissionsAndTapStartSucceed() {
+        let permissions = StubDetectorPermissions(accessibility: true, inputMonitoring: true)
+        let monitor = StubPointerMonitor()
+        let detector = ManualActionDetector(monitor: monitor, permissions: permissions)
+
+        detector.start()
+
+        XCTAssertEqual(detector.status, .monitoring)
+        XCTAssertEqual(monitor.startCount, 1)
+    }
+
+    func testDetectorStopsReportingMonitoringWhenPermissionBecomesStale() {
+        let permissions = StubDetectorPermissions(accessibility: true, inputMonitoring: true)
+        let detector = ManualActionDetector(monitor: StubPointerMonitor(), permissions: permissions)
+        detector.start()
+
+        permissions.isInputMonitoringAuthorized = false
+
+        XCTAssertEqual(detector.status, .permissionRequired([.inputMonitoring]))
+    }
+
+    func testDetectorPermissionRequestsUseTheirSystemPermissionSeams() {
+        let permissions = StubDetectorPermissions(accessibility: false, inputMonitoring: false)
+        let detector = ManualActionDetector(monitor: StubPointerMonitor(), permissions: permissions)
+
+        detector.requestAccessibilityPermission()
+        detector.requestInputMonitoringPermission()
+
+        XCTAssertEqual(permissions.accessibilityRequestCount, 1)
+        XCTAssertEqual(permissions.inputMonitoringRequestCount, 1)
+    }
+
     func testDeliveryRecordsOnceAndFansOutToSelectedChannels() async {
         let persistence = MemoryPersistence()
         let inbox = InboxStore(persistence: persistence)

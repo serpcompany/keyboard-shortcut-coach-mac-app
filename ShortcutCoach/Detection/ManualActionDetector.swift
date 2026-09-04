@@ -1,19 +1,57 @@
 import ApplicationServices
+import CoreGraphics
 import Foundation
+
+protocol DetectorPermissionProviding {
+    var isAccessibilityTrusted: Bool { get }
+    var isInputMonitoringAuthorized: Bool { get }
+    func requestAccessibility()
+    func requestInputMonitoring()
+}
+
+struct SystemDetectorPermissions: DetectorPermissionProviding {
+    var isAccessibilityTrusted: Bool { AXIsProcessTrusted() }
+    var isInputMonitoringAuthorized: Bool { CGPreflightListenEventAccess() }
+
+    func requestAccessibility() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(options)
+    }
+
+    func requestInputMonitoring() {
+        CGRequestListenEventAccess()
+    }
+}
 
 @MainActor
 final class ManualActionDetector {
+    enum RequiredPermission: Equatable {
+        case accessibility
+        case inputMonitoring
+    }
+
     enum Status: Equatable {
         case stopped
-        case permissionRequired
+        case permissionRequired([RequiredPermission])
         case monitoring
         case failed(String)
     }
 
-    private(set) var status: Status = .stopped
+    private var operationalStatus: Status = .stopped
+    var status: Status {
+        let missing = missingPermissions
+        if operationalStatus != .stopped, !missing.isEmpty {
+            return .permissionRequired(missing)
+        }
+        if case .permissionRequired = operationalStatus {
+            return .stopped
+        }
+        return operationalStatus
+    }
     var onEvent: ((CoachingEvent) -> Void)?
-    private let monitor: PointerEventMonitor
+    private let monitor: any PointerEventMonitoring
     private let snapshotter: AccessibilitySnapshotter
+    private let permissions: any DetectorPermissionProviding
     private let chromeAdapter = ChromeActionAdapter()
     private let windowControlMonitor = StandardWindowControlMonitor()
     private let finderTrashMonitor = FinderTrashMonitor()
@@ -25,22 +63,39 @@ final class ManualActionDetector {
     private var lastMenuSignature: String?
     private var lastMenuEmission = Date.distantPast
 
-    var isAccessibilityTrusted: Bool { AXIsProcessTrusted() }
+    var isAccessibilityTrusted: Bool { permissions.isAccessibilityTrusted }
+    var isInputMonitoringAuthorized: Bool { permissions.isInputMonitoringAuthorized }
 
-    init(monitor: PointerEventMonitor = PointerEventMonitor(), snapshotter: AccessibilitySnapshotter = AccessibilitySnapshotter()) {
+    private var missingPermissions: [RequiredPermission] {
+        var missing: [RequiredPermission] = []
+        if !permissions.isAccessibilityTrusted { missing.append(.accessibility) }
+        if !permissions.isInputMonitoringAuthorized { missing.append(.inputMonitoring) }
+        return missing
+    }
+
+    init(
+        monitor: any PointerEventMonitoring = PointerEventMonitor(),
+        snapshotter: AccessibilitySnapshotter = AccessibilitySnapshotter(),
+        permissions: any DetectorPermissionProviding = SystemDetectorPermissions()
+    ) {
         self.monitor = monitor
         self.snapshotter = snapshotter
+        self.permissions = permissions
     }
 
     func requestAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
+        permissions.requestAccessibility()
+    }
+
+    func requestInputMonitoringPermission() {
+        permissions.requestInputMonitoring()
     }
 
     func start() {
         stop()
-        guard AXIsProcessTrusted() else {
-            status = .permissionRequired
+        let missing = missingPermissions
+        guard missing.isEmpty else {
+            operationalStatus = .permissionRequired(missing)
             return
         }
 
@@ -57,10 +112,10 @@ final class ManualActionDetector {
         windowControlMonitor.onEvent = { [weak self] event in self?.onEvent?(event) }
         finderTrashMonitor.onEvent = { [weak self] event in self?.onEvent?(event) }
         guard monitor.start() else {
-            status = .failed("macOS did not create the Accessibility event monitor")
+            operationalStatus = .failed("macOS did not create the pointer event monitor")
             return
         }
-        status = .monitoring
+        operationalStatus = .monitoring
     }
 
     func stop() {
@@ -72,7 +127,7 @@ final class ManualActionDetector {
         bufferedMouseUp = nil
         bufferedDragLocations.removeAll()
         generation += 1
-        status = .stopped
+        operationalStatus = .stopped
     }
 
     private func receive(_ sample: PointerSample) {
