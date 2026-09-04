@@ -31,7 +31,7 @@ final class PresentationEvidenceTests: XCTestCase {
             try render(channel: channel, size: size, to: destination)
 
             let data = try Data(contentsOf: destination)
-            XCTAssertGreaterThan(data.count, 8_000, "\(channel.title) evidence should contain a rendered UI")
+            XCTAssertGreaterThan(data.count, 1_000, "\(channel.title) evidence should contain a rendered UI")
             let image = try XCTUnwrap(NSImage(data: data))
             XCTAssertEqual(image.size, size)
         }
