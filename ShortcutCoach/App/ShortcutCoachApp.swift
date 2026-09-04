@@ -13,6 +13,9 @@ struct ShortcutCoachApp: App {
                     model.start()
                     NativeStatusItemController.shared.install(model: model)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    model.refreshDetectorState()
+                }
                 .modifier(OpenMainWindowListener())
         }
         .defaultSize(width: 920, height: 640)

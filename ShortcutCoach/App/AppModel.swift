@@ -13,15 +13,13 @@ final class AppModel {
     private let detector: ManualActionDetector
     private let presenceController: any AppPresenceControlling
 
+    private(set) var detectorStatus: ManualActionDetector.Status = .stopped
+    private(set) var isAccessibilityTrusted = false
+    private(set) var isInputMonitoringAuthorized = false
     private(set) var lastReport: DeliveryReport?
     private(set) var isStarted = false
 
     var unreadCount: Int { inbox.unreadCount }
-    var isAccessibilityTrusted: Bool { detector.isAccessibilityTrusted }
-    var isInputMonitoringAuthorized: Bool { detector.isInputMonitoringAuthorized }
-    var detectorStatus: ManualActionDetector.Status {
-        releaseLane.supportsManualActionDetection ? detector.status : .stopped
-    }
 
     convenience init() {
         self.init(
@@ -67,6 +65,7 @@ final class AppModel {
                 await self?.deliver(event)
             }
         }
+        refreshDetectorState()
     }
 
     func start() {
@@ -76,22 +75,38 @@ final class AppModel {
         if releaseLane.supportsManualActionDetection {
             detector.start()
         }
+        refreshDetectorState()
         refreshDockBadge()
     }
 
     func requestAccessibilityPermission() {
         guard releaseLane.supportsManualActionDetection else { return }
         detector.requestAccessibilityPermission()
+        refreshDetectorState()
     }
 
     func requestInputMonitoringPermission() {
         guard releaseLane.supportsManualActionDetection else { return }
         detector.requestInputMonitoringPermission()
+        refreshDetectorState()
     }
 
     func retryDetection() {
         guard releaseLane.supportsManualActionDetection else { return }
         detector.start()
+        refreshDetectorState()
+    }
+
+    func refreshDetectorState() {
+        guard releaseLane.supportsManualActionDetection else {
+            detectorStatus = .stopped
+            isAccessibilityTrusted = false
+            isInputMonitoringAuthorized = false
+            return
+        }
+        detectorStatus = detector.status
+        isAccessibilityTrusted = detector.isAccessibilityTrusted
+        isInputMonitoringAuthorized = detector.isInputMonitoringAuthorized
     }
 
     func deliverSample(channel: NotificationChannel? = nil) async {

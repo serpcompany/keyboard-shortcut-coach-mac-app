@@ -39,9 +39,14 @@ final class ManualActionDetector {
 
     private var operationalStatus: Status = .stopped
     var status: Status {
-        guard operationalStatus == .monitoring else { return operationalStatus }
         let missing = missingPermissions
-        return missing.isEmpty ? .monitoring : .permissionRequired(missing)
+        if operationalStatus != .stopped, !missing.isEmpty {
+            return .permissionRequired(missing)
+        }
+        if case .permissionRequired = operationalStatus {
+            return .stopped
+        }
+        return operationalStatus
     }
     var onEvent: ((CoachingEvent) -> Void)?
     private let monitor: any PointerEventMonitoring
