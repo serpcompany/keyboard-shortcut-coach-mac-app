@@ -31,9 +31,9 @@ xcodebuild \
 
 CI disables signing. Local runtime verification uses the configured Developer ID identity.
 
-## Accessibility identity
+## Detector permission identity
 
-macOS associates Accessibility approval with the app's signed code requirement. To keep local approval stable:
+macOS associates Accessibility and Input Monitoring approvals with the app's signed code requirement. To keep local approval stable:
 
 - Run the Xcode-built bundle directly.
 - Keep the bundle identifier and signing team stable.
@@ -41,13 +41,14 @@ macOS associates Accessibility approval with the app's signed code requirement. 
 - Do not ad-hoc re-sign it.
 - Rebuild before granting permission, not afterward.
 
-If System Settings says the app is enabled but Diagnostics still says permission is required, reset only this bundle's stale row:
+If System Settings says the app is enabled but Diagnostics still says permission is required, reset only this bundle's stale rows:
 
 ~~~sh
 tccutil reset Accessibility com.serp.shortcutcoach
+tccutil reset ListenEvent com.serp.shortcutcoach
 ~~~
 
-Then relaunch the exact app, request permission, and enable the newly registered row.
+Then relaunch the exact app, request both permissions, and enable the newly registered rows. Diagnostics reports Monitoring only when both public permission checks succeed and the listen-only event tap starts.
 
 ## Runtime acceptance
 

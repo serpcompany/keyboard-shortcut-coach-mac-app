@@ -13,12 +13,15 @@ final class AppModel {
     private let detector: ManualActionDetector
     private let presenceController: any AppPresenceControlling
 
-    private(set) var detectorStatus: ManualActionDetector.Status = .stopped
     private(set) var lastReport: DeliveryReport?
     private(set) var isStarted = false
 
     var unreadCount: Int { inbox.unreadCount }
     var isAccessibilityTrusted: Bool { detector.isAccessibilityTrusted }
+    var isInputMonitoringAuthorized: Bool { detector.isInputMonitoringAuthorized }
+    var detectorStatus: ManualActionDetector.Status {
+        releaseLane.supportsManualActionDetection ? detector.status : .stopped
+    }
 
     convenience init() {
         self.init(
@@ -72,9 +75,6 @@ final class AppModel {
         presenceController.apply(showInDockAndSwitcher: preferences.showInDockAndSwitcher)
         if releaseLane.supportsManualActionDetection {
             detector.start()
-            detectorStatus = detector.status
-        } else {
-            detectorStatus = .stopped
         }
         refreshDockBadge()
     }
@@ -84,10 +84,14 @@ final class AppModel {
         detector.requestAccessibilityPermission()
     }
 
+    func requestInputMonitoringPermission() {
+        guard releaseLane.supportsManualActionDetection else { return }
+        detector.requestInputMonitoringPermission()
+    }
+
     func retryDetection() {
         guard releaseLane.supportsManualActionDetection else { return }
         detector.start()
-        detectorStatus = detector.status
     }
 
     func deliverSample(channel: NotificationChannel? = nil) async {

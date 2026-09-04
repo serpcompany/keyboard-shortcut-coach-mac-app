@@ -25,7 +25,7 @@ Release verification covers both lanes. Run the unit suite with `ShortcutCoach`,
 | Synthetic default delivery | Diagnostics reported inbox, toast, and badge delivered | Synthetic runtime |
 | App presence policy | LaunchServices changed Foreground → UIElement → Foreground | Manual runtime |
 | Stable signing | Developer ID build and strict codesign verification | Manual runtime |
-| Accessibility detector | Diagnostics reported Monitoring | Manual runtime |
+| Pointer detector permissions | Accessibility and Input Monitoring checks passed; Diagnostics reported Monitoring | Manual runtime |
 | Real manual action | Finder → File → New Finder Window produced ⌘N event and notification | Manual runtime |
 | Relaunch behavior | Real event and unread count survived relaunch; detector resumed | Manual runtime |
 

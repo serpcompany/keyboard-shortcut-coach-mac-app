@@ -9,7 +9,14 @@ struct PointerSample: Equatable, Sendable {
     let timestamp: TimeInterval
 }
 
-final class PointerEventMonitor {
+protocol PointerEventMonitoring: AnyObject {
+    var onSample: ((PointerSample) -> Void)? { get set }
+    var onTapRecovered: (() -> Void)? { get set }
+    func start() -> Bool
+    func stop()
+}
+
+final class PointerEventMonitor: PointerEventMonitoring {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     var onSample: ((PointerSample) -> Void)?

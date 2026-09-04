@@ -6,6 +6,10 @@ Shortcut Coach requires macOS Accessibility permission to identify supported con
 
 The detector uses a listen-only mouse event tap. It does not modify or suppress the click. Accessibility snapshots are processed locally and are not transmitted. Chrome tab titles, URLs, page content, profiles, accounts, browsing history, Finder item names, and file paths are not added to coaching history.
 
+## Input Monitoring
+
+Shortcut Coach requires macOS Input Monitoring permission for its listen-only Core Graphics event tap. The app requests this permission through Apple's public API and reports which permission is missing instead of claiming that detection is active. Mouse events are correlated locally with bounded Accessibility snapshots and are not recorded as an input log.
+
 ## Local data
 
 The app stores:
