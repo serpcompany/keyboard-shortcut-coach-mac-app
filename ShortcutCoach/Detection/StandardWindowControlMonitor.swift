@@ -12,18 +12,39 @@ enum StandardWindowControlKind: Equatable, Sendable {
 struct WindowControlState: Equatable, Sendable {
     let present: Bool
     let minimized: Bool?
+    let fullScreen: Bool?
     let frame: CGRect?
 }
 
 enum WindowControlPolicy {
+    private static let userModifierFlags: CGEventFlags = [
+        .maskAlphaShift, .maskShift, .maskControl, .maskAlternate,
+        .maskCommand, .maskNumericPad, .maskHelp, .maskSecondaryFn
+    ]
+
+    static func hasDisallowedModifiers(_ flags: CGEventFlags) -> Bool {
+        if !flags.intersection(userModifierFlags).isEmpty { return true }
+        let allowedBookkeepingBits = CGEventFlags.maskNonCoalesced.rawValue
+        return flags.rawValue & ~(userModifierFlags.rawValue | allowedBookkeepingBits) != 0
+    }
+
+    static func uniqueShortcut(from matches: [String]) -> String? {
+        matches.count == 1 && !matches[0].isEmpty ? matches[0] : nil
+    }
+
+    static func acceptsWindow(isStandard: Bool?, isModal: Bool?) -> Bool {
+        isStandard == true && isModal == false
+    }
+
     static func event(
         kind: StandardWindowControlKind,
         applicationName: String,
-        shortcut: String,
+        shortcut: String?,
         pre: WindowControlState,
         post: WindowControlState,
         pointer: CGPoint
     ) -> CoachingEvent? {
+        guard pre.present, let shortcut, !shortcut.isEmpty else { return nil }
         let completed: Bool
         let title: String
         switch kind {
@@ -35,11 +56,13 @@ enum WindowControlPolicy {
             title = "Close Window"
         case .fullScreen:
             if let before = pre.frame, let after = post.frame {
-                completed = post.present && (abs(before.width - after.width) > 20 || abs(before.height - after.height) > 20)
+                let changedFrame = abs(before.width - after.width) > 20 || abs(before.height - after.height) > 20
+                completed = post.present && changedFrame
+                    && pre.fullScreen != nil && post.fullScreen == !(pre.fullScreen ?? false)
             } else {
                 completed = false
             }
-            title = "Enter Full Screen"
+            title = pre.fullScreen == true ? "Exit Full Screen" : "Enter Full Screen"
         }
         guard completed else { return nil }
         return CoachingEvent(
@@ -56,7 +79,7 @@ final class StandardWindowControlMonitor {
     private final class Session {
         let kind: StandardWindowControlKind
         let applicationName: String
-        let bundleIdentifier: String
+        let processIdentifier: pid_t
         let application: AXUIElement
         let window: AXUIElement
         let buttonFrame: CGRect
@@ -65,14 +88,15 @@ final class StandardWindowControlMonitor {
         let pointerDown: CGPoint
         let downTimestamp: TimeInterval
         var maximumTravel: CGFloat = 0
+        var modifiersPresent = false
 
-        init(kind: StandardWindowControlKind, applicationName: String, bundleIdentifier: String,
+        init(kind: StandardWindowControlKind, applicationName: String, processIdentifier: pid_t,
              application: AXUIElement, window: AXUIElement, buttonFrame: CGRect,
              preState: WindowControlState, shortcut: String, pointerDown: CGPoint,
              downTimestamp: TimeInterval) {
             self.kind = kind
             self.applicationName = applicationName
-            self.bundleIdentifier = bundleIdentifier
+            self.processIdentifier = processIdentifier
             self.application = application
             self.window = window
             self.buttonFrame = buttonFrame
@@ -103,6 +127,7 @@ final class StandardWindowControlMonitor {
             begin(sample)
         case .dragged:
             guard let session else { return }
+            session.modifiersPresent = session.modifiersPresent || WindowControlPolicy.hasDisallowedModifiers(sample.modifiers)
             session.maximumTravel = max(
                 session.maximumTravel,
                 hypot(sample.location.x - session.pointerDown.x, sample.location.y - session.pointerDown.y)
@@ -116,11 +141,15 @@ final class StandardWindowControlMonitor {
 
     private func begin(_ sample: PointerSample) {
         session = nil
-        guard relevantModifiers(in: sample.modifiers).isEmpty,
+        guard !WindowControlPolicy.hasDisallowedModifiers(sample.modifiers),
               let hit = element(at: sample.location),
               let kind = controlKind(hit),
               let window = containingWindow(for: hit),
-              let frame = frame(of: hit) else { return }
+              let frame = frame(of: hit),
+              WindowControlPolicy.acceptsWindow(
+                isStandard: (attribute(kAXSubroleAttribute, from: window) as String?) == kAXStandardWindowSubrole as String,
+                isModal: attribute(kAXModalAttribute, from: window)
+              ) else { return }
 
         var pid: pid_t = 0
         guard AXUIElementGetPid(hit, &pid) == .success,
@@ -132,12 +161,11 @@ final class StandardWindowControlMonitor {
         let application = AXUIElementCreateApplication(pid)
         let pre = state(of: window, in: application)
         guard pre.present else { return }
-        let shortcut = liveShortcut(for: kind, in: application)
-            ?? fallbackShortcut(for: kind, bundleIdentifier: bundle)
+        guard let shortcut = liveShortcut(for: kind, in: application) else { return }
         session = Session(
             kind: kind,
             applicationName: running.localizedName ?? "Current app",
-            bundleIdentifier: bundle,
+            processIdentifier: pid,
             application: application,
             window: window,
             buttonFrame: frame,
@@ -150,7 +178,9 @@ final class StandardWindowControlMonitor {
 
     private func finishGesture(_ sample: PointerSample) {
         guard let current = session else { return }
-        guard relevantModifiers(in: sample.modifiers).isEmpty,
+        guard !current.modifiersPresent,
+              !WindowControlPolicy.hasDisallowedModifiers(sample.modifiers),
+              NSWorkspace.shared.frontmostApplication?.processIdentifier == current.processIdentifier,
               sample.timestamp - current.downTimestamp <= 1.5,
               current.maximumTravel <= 4,
               current.buttonFrame.insetBy(dx: -2, dy: -2).contains(sample.location) else {
@@ -188,10 +218,6 @@ final class StandardWindowControlMonitor {
         }
     }
 
-    private func relevantModifiers(in flags: CGEventFlags) -> CGEventFlags {
-        flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift])
-    }
-
     private func controlKind(_ element: AXUIElement) -> StandardWindowControlKind? {
         guard (attribute(kAXRoleAttribute, from: element) as String?) == kAXButtonRole as String,
               actions(of: element).contains(kAXPressAction as String),
@@ -209,6 +235,7 @@ final class StandardWindowControlMonitor {
         return WindowControlState(
             present: present,
             minimized: attribute(kAXMinimizedAttribute, from: window),
+            fullScreen: attribute("AXFullScreen", from: window),
             frame: frame(of: window)
         )
     }
@@ -233,7 +260,7 @@ final class StandardWindowControlMonitor {
             let children: [AXUIElement] = attribute(kAXChildrenAttribute, from: element) ?? []
             frontier.append(contentsOf: children)
         }
-        return Set(matches).count == 1 ? matches.first : nil
+        return WindowControlPolicy.uniqueShortcut(from: matches)
     }
 
     private func menuTitle(_ title: String, matches kind: StandardWindowControlKind) -> Bool {
@@ -243,14 +270,6 @@ final class StandardWindowControlMonitor {
         case .minimize: return normalized == "minimize" || normalized == "miniaturize"
         case .close: return normalized == "close window" || normalized == "close"
         case .fullScreen: return normalized == "enter full screen" || normalized == "exit full screen"
-        }
-    }
-
-    private func fallbackShortcut(for kind: StandardWindowControlKind, bundleIdentifier: String) -> String {
-        switch kind {
-        case .minimize: return "⌘M"
-        case .close: return bundleIdentifier == "com.google.Chrome" ? "⇧⌘W" : "⌘W"
-        case .fullScreen: return "⌃⌘F"
         }
     }
 
