@@ -6,7 +6,7 @@ enum ManualActionKind: Equatable, Sendable {
     case chromeNewTab
     case chromeCloseActiveTab(tabToken: String)
     case chromeSelectTab(tabToken: String, index: Int, tabCount: Int)
-    case chromeSettings(initialTabCount: Int)
+    case chromeSettings(shortcut: String)
 }
 
 struct ManualActionCandidate: Equatable, Sendable {
@@ -35,11 +35,15 @@ struct ChromeActionAdapter: ApplicationActionAdapter {
 
     func classify(_ snapshot: AccessibilitySnapshot, point: CGPoint) -> ManualActionCandidate? {
         guard let bundle = snapshot.bundleIdentifier, Self.bundleIdentifiers.contains(bundle),
-              snapshot.hit.enabled != false, let tabs = snapshot.tabs else { return nil }
+              snapshot.hit.enabled != false else { return nil }
 
-        if isSettingsMenuItem(snapshot.hit), snapshot.hit.actions.contains(kAXPressAction as String) {
-            return candidate(.chromeSettings(initialTabCount: tabs.tabs.count), snapshot, point)
+        if Self.isSettingsMenuItem(snapshot.hit), snapshot.hit.actions.contains(kAXPressAction as String) {
+            guard case .resolved(let shortcut) = snapshot.chromeSettingsShortcut,
+                  snapshot.chromeDestination != .settings else { return nil }
+            return candidate(.chromeSettings(shortcut: shortcut), snapshot, point)
         }
+
+        guard let tabs = snapshot.tabs else { return nil }
 
         if let tab = tabNode(in: snapshot) {
             if isCloseButton(snapshot.hit) {
@@ -83,7 +87,7 @@ struct ChromeActionAdapter: ApplicationActionAdapter {
         }
     }
 
-    private func isSettingsMenuItem(_ node: AXNodeSnapshot) -> Bool {
+    static func isSettingsMenuItem(_ node: AXNodeSnapshot) -> Bool {
         guard node.role == kAXMenuItemRole as String else { return false }
         let semantic = [node.identifier, node.elementDescription, node.title]
             .compactMap { $0?.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)

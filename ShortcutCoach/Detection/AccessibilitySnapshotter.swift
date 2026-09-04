@@ -30,6 +30,18 @@ struct ChromeTabState: Codable, Equatable, Sendable {
     let tabs: [AXNodeSnapshot]
 }
 
+enum LiveShortcutResolution: Codable, Equatable, Sendable {
+    case resolved(String)
+    case unavailable
+    case ambiguous
+}
+
+enum ChromeNavigationDestination: String, Codable, Equatable, Sendable {
+    case settings
+    case other
+    case unavailable
+}
+
 struct AccessibilitySnapshot: Codable, Equatable, Sendable {
     let pid: Int32
     let bundleIdentifier: String?
@@ -37,6 +49,8 @@ struct AccessibilitySnapshot: Codable, Equatable, Sendable {
     let hit: AXNodeSnapshot
     let ancestors: [AXNodeSnapshot]
     let tabs: ChromeTabState?
+    var chromeSettingsShortcut: LiveShortcutResolution = .unavailable
+    var chromeDestination: ChromeNavigationDestination = .unavailable
     var hitAndAncestors: [AXNodeSnapshot] { [hit] + ancestors }
 }
 
@@ -71,12 +85,75 @@ final class AccessibilitySnapshotter {
             cursor = parent
             if node.role == kAXApplicationRole as String { break }
         }
-        let chromeTabs = bundleIdentifier.map(ChromeActionAdapter.bundleIdentifiers.contains) == true
+        let isChrome = bundleIdentifier.map(ChromeActionAdapter.bundleIdentifiers.contains) == true
+        let hitSnapshot = nodeSnapshot(hit)
+        let chromeTabs = isChrome && !ChromeActionAdapter.isSettingsMenuItem(hitSnapshot)
             ? tabState(hit: hit, ancestors: ancestors, application: applicationElement) : nil
         return AccessibilitySnapshot(pid: pid, bundleIdentifier: bundleIdentifier,
                                      applicationName: app?.localizedName ?? "Current app",
-                                     hit: nodeSnapshot(hit), ancestors: ancestors.map(\.1),
-                                     tabs: chromeTabs)
+                                     hit: hitSnapshot, ancestors: ancestors.map(\.1),
+                                     tabs: chromeTabs,
+                                     chromeSettingsShortcut: isChrome ? settingsShortcut(in: applicationElement) : .unavailable,
+                                     chromeDestination: isChrome ? navigationDestination(in: applicationElement) : .unavailable)
+    }
+
+    private func settingsShortcut(in application: AXUIElement) -> LiveShortcutResolution {
+        guard let menuBar: AXUIElement = attribute(kAXMenuBarAttribute, from: application) else { return .unavailable }
+        var frontier = [menuBar]
+        var visited = 0
+        var matchCount = 0
+        var shortcuts = Set<String>()
+        while !frontier.isEmpty, visited < 500 {
+            let element = frontier.removeFirst()
+            visited += 1
+            if (attribute(kAXRoleAttribute, from: element) as String?) == kAXMenuItemRole as String,
+               let title: String = attribute(kAXTitleAttribute, from: element),
+               isSettingsTitle(title) {
+                matchCount += 1
+                let enabled: Bool? = attribute(kAXEnabledAttribute, from: element)
+                if enabled != false,
+                   let command: String = attribute(kAXMenuItemCmdCharAttribute, from: element),
+                   !command.isEmpty {
+                    let modifiers: NSNumber? = attribute(kAXMenuItemCmdModifiersAttribute, from: element)
+                    shortcuts.insert(ShortcutFormatter.format(command: command, modifiers: modifiers?.intValue ?? 0))
+                }
+            }
+            frontier.append(contentsOf: children(of: element))
+        }
+        guard matchCount > 0, !shortcuts.isEmpty else { return .unavailable }
+        guard matchCount == 1, shortcuts.count == 1, let shortcut = shortcuts.first else { return .ambiguous }
+        return .resolved(shortcut)
+    }
+
+    private func navigationDestination(in application: AXUIElement) -> ChromeNavigationDestination {
+        var frontier = [application]
+        var visited = 0
+        while !frontier.isEmpty, visited < 500 {
+            let element = frontier.removeFirst()
+            visited += 1
+            let role: String? = attribute(kAXRoleAttribute, from: element)
+            let title: String? = attribute(kAXTitleAttribute, from: element)
+            let description: String? = attribute(kAXDescriptionAttribute, from: element)
+            let identifier: String? = attribute(kAXIdentifierAttribute, from: element)
+            let semantics = [title, description, identifier]
+                .compactMap { $0?.lowercased().replacingOccurrences(of: " ", with: "") }
+            let isAddressField = role == kAXTextFieldRole as String && semantics.contains {
+                $0.contains("addressandsearchbar") || $0.contains("locationbar") || $0.contains("omnibox")
+            }
+            if isAddressField {
+                guard let address: String = attribute(kAXValueAttribute, from: element) else { return .unavailable }
+                return address == "chrome://settings" || address.hasPrefix("chrome://settings/") ? .settings : .other
+            }
+            frontier.append(contentsOf: children(of: element))
+        }
+        return .unavailable
+    }
+
+    private func isSettingsTitle(_ title: String) -> Bool {
+        let normalized = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized == "settings" || normalized == "settings…" || normalized == "settings..." ||
+            normalized == "preferences" || normalized == "preferences…" || normalized == "preferences..."
     }
 
     private func tabState(hit: AXUIElement, ancestors: [(AXUIElement, AXNodeSnapshot)], application: AXUIElement) -> ChromeTabState? {

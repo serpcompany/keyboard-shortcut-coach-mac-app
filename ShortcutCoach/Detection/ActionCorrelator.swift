@@ -34,30 +34,35 @@ struct ActionCorrelator {
         guard let candidate, dragDistance <= 4,
               sample.timestamp - downTimestamp <= maximumDuration,
               sample.modifiers.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty,
-              candidate.targetFrame?.contains(sample.location) != false,
-              hit?.bundleIdentifier == candidate.preSnapshot.bundleIdentifier else { cancel(); return false }
+              candidate.targetFrame?.contains(sample.location) != false else { cancel(); return false }
+        if hit == nil, case .chromeSettings = candidate.kind {
+            return true
+        }
+        guard hit?.bundleIdentifier == candidate.preSnapshot.bundleIdentifier else { cancel(); return false }
         return true
     }
 
     mutating func verify(post: AccessibilitySnapshot, at timestamp: TimeInterval) -> CoachingEvent? {
         guard let candidate else { return nil }
         defer { cancel() }
-        guard post.bundleIdentifier == candidate.preSnapshot.bundleIdentifier,
-              let preTabs = candidate.preSnapshot.tabs, let postTabs = post.tabs,
-              preTabs.containerToken == postTabs.containerToken else { return nil }
+        guard post.bundleIdentifier == candidate.preSnapshot.bundleIdentifier else { return nil }
         let output: (String, String)?
         switch candidate.kind {
-        case .chromeNewTab where postTabs.tabs.count == preTabs.tabs.count + 1:
+        case .chromeNewTab where tabStates(candidate.preSnapshot, post, satisfy: { $1.tabs.count == $0.tabs.count + 1 }):
             output = ("New Tab", ChromeShortcutCatalog.newTab)
         case .chromeCloseActiveTab(let token)
-            where postTabs.tabs.count == preTabs.tabs.count - 1 && !postTabs.tabs.contains(where: { $0.token == token }):
+            where tabStates(candidate.preSnapshot, post, satisfy: {
+                $1.tabs.count == $0.tabs.count - 1 && !$1.tabs.contains(where: { $0.token == token })
+            }):
             output = ("Close Tab", ChromeShortcutCatalog.closeTab)
         case .chromeSelectTab(let token, let index, let count)
-            where postTabs.tabs.count == count && postTabs.tabs.first(where: { $0.token == token })?.selected == true:
+            where tabStates(candidate.preSnapshot, post, satisfy: {
+                $1.tabs.count == count && $1.tabs.first(where: { $0.token == token })?.selected == true
+            }):
             output = ("Select Tab \(index)", ChromeShortcutCatalog.selectTab(index: index))
-        case .chromeSettings(let initialTabCount)
-            where postTabs.tabs.count > initialTabCount:
-            output = ("Settings", "⌘,")
+        case .chromeSettings(let shortcut)
+            where post.chromeDestination == .settings && post.chromeSettingsShortcut == .resolved(shortcut):
+            output = ("Settings", shortcut)
         default: output = nil
         }
         guard let output else { return nil }
@@ -67,5 +72,88 @@ struct ActionCorrelator {
         lastEmissionTimestamp = timestamp
         return CoachingEvent(applicationName: candidate.applicationName, actionTitle: output.0,
                              shortcut: output.1, pointerX: candidate.point.x, pointerY: candidate.point.y)
+    }
+
+    private func tabStates(
+        _ pre: AccessibilitySnapshot,
+        _ post: AccessibilitySnapshot,
+        satisfy predicate: (ChromeTabState, ChromeTabState) -> Bool
+    ) -> Bool {
+        guard let preTabs = pre.tabs, let postTabs = post.tabs,
+              preTabs.containerToken == postTabs.containerToken else { return false }
+        return predicate(preTabs, postTabs)
+    }
+}
+
+enum ChromeClickObservation: Equatable, Sendable {
+    case down(PointerSample, AccessibilitySnapshot?)
+    case dragged(PointerSample)
+    case up(PointerSample, AccessibilitySnapshot?)
+    case post(AccessibilitySnapshot?, timestamp: TimeInterval)
+    case cancelled
+}
+
+enum ChromeClickSuppression: Equatable, Sendable {
+    case unrecognizedAction
+    case invalidGesture
+    case missingPostObservation
+    case postconditionFailed
+    case cancelled
+}
+
+enum ChromeClickOutcome: Equatable, Sendable {
+    case pending
+    case suppressed(ChromeClickSuppression)
+    case event(CoachingEvent)
+}
+
+struct ChromeClickDetector {
+    private let adapter = ChromeActionAdapter()
+    private var correlator = ActionCorrelator()
+    private var ignoringGesture = false
+    private(set) var needsPostObservation = false
+    var hasPendingCandidate: Bool { correlator.candidate != nil }
+
+    mutating func receive(_ observation: ChromeClickObservation) -> ChromeClickOutcome {
+        switch observation {
+        case .down(let sample, let snapshot):
+            ignoringGesture = false
+            needsPostObservation = false
+            guard let snapshot, let candidate = adapter.classify(snapshot, point: sample.location) else {
+                correlator.cancel()
+                ignoringGesture = true
+                return .suppressed(.unrecognizedAction)
+            }
+            correlator.begin(candidate, at: sample.timestamp, modifiers: sample.modifiers)
+            guard correlator.candidate != nil else { return .suppressed(.invalidGesture) }
+            return .pending
+        case .dragged(let sample):
+            guard !ignoringGesture else { return .pending }
+            correlator.observeDrag(to: sample.location)
+            return .pending
+        case .up(let sample, let snapshot):
+            if ignoringGesture {
+                ignoringGesture = false
+                return .pending
+            }
+            guard correlator.acceptsMouseUp(sample, hit: snapshot) else { return .suppressed(.invalidGesture) }
+            needsPostObservation = true
+            return .pending
+        case .post(let snapshot, let timestamp):
+            needsPostObservation = false
+            guard let snapshot else {
+                correlator.cancel()
+                return .suppressed(.missingPostObservation)
+            }
+            guard let event = correlator.verify(post: snapshot, at: timestamp) else {
+                return .suppressed(.postconditionFailed)
+            }
+            return .event(event)
+        case .cancelled:
+            ignoringGesture = false
+            needsPostObservation = false
+            correlator.cancel()
+            return .suppressed(.cancelled)
+        }
     }
 }
