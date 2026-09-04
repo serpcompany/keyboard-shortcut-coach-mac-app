@@ -60,6 +60,38 @@ enum NotificationChannel: String, Codable, CaseIterable, Identifiable, Sendable 
     }
 }
 
+enum PresentationOverlapPolicy {
+    static let exclusiveGroups: [[NotificationChannel]] = [
+        [.decisionBanner, .topCenterShelf, .statusFeedback],
+        [.pointerCard, .cursorHalo]
+    ]
+
+    static var topCenterChannels: Set<NotificationChannel> { Set(exclusiveGroups[0]) }
+    static var pointerChannels: Set<NotificationChannel> { Set(exclusiveGroups[1]) }
+
+    static func exclusiveGroup(containing channel: NotificationChannel) -> Set<NotificationChannel>? {
+        exclusiveGroups.first(where: { $0.contains(channel) }).map(Set.init)
+    }
+
+    static func selecting(
+        _ channel: NotificationChannel,
+        in channels: Set<NotificationChannel>
+    ) -> Set<NotificationChannel> {
+        guard let group = exclusiveGroup(containing: channel) else {
+            return channels.union([channel])
+        }
+        return channels.subtracting(group).union([channel])
+    }
+
+    static func normalized(_ channels: Set<NotificationChannel>) -> Set<NotificationChannel> {
+        exclusiveGroups.reduce(channels) { result, group in
+            let selected = group.filter(result.contains)
+            guard let preferred = selected.first, selected.count > 1 else { return result }
+            return result.subtracting(group).union([preferred])
+        }
+    }
+}
+
 enum DeliveryOutcome: Equatable, Sendable {
     case delivered
     case failed(String)
@@ -70,4 +102,3 @@ struct DeliveryReport: Equatable, Sendable {
     let inboxRecorded: Bool
     let outcomes: [NotificationChannel: DeliveryOutcome]
 }
-

@@ -230,6 +230,11 @@ private struct PresentationChannelsView: View {
                     .padding(.vertical, 3)
                 }
             }
+            Section {
+                Text("Channels that share a position are exclusive. Enabling a top-center presentation disables the other top-center choices; enabling Cursor Halo or Pointer Card disables the other pointer choice.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("Presentation Channels")

@@ -30,20 +30,31 @@ are covered with synthetic two-display geometry.
 ## Combination decision
 
 - Top-right Toast combines safely with either pointer-based channel.
-- Cursor Halo and Pointer Card are redundant at the pointer; enable at most one.
+- Cursor Halo and Pointer Card are redundant at the pointer. Settings enforce a
+  last-selection-wins policy for this pair, and the runtime replaces an active
+  peer as a defensive fallback.
 - Top-center Shelf, Status Feedback, and Decision Banner share the top-center
-  anchor and overlap. Enable at most one of these three until the product gains a
-  stacking policy.
+  anchor. The settings enforce a last-selection-wins policy, and the runtime also
+  replaces any active top-center panel before showing another one.
 - Native banner, Dock badge, Dock bounce, and sound are OS-controlled and can be
   combined with one custom visual channel, subject to user notification and sound
   preferences.
 
 ## What this evidence does not claim
 
-Off-screen rendering cannot prove Notification Center authorization or appearance,
-the physical Dock badge/bounce, audible sound output, behavior on a real full-screen
-Space, or keyboard dismissal of a nonactivating panel. Those require a signed app
-running in a controlled macOS QA account and screen/audio capture. The current
-implementation also lacks a verified keyboard-dismissal path. Issue #11 must remain
-open until those runtime checks pass or their acceptance criteria are deliberately
-changed.
+Deterministic integration tests exercise Notification Center authorization and
+content submission through a production-backed adapter, the exact Dock badge label,
+the informational Dock attention request, and Glass sound playback invocation.
+They also prove that Escape dismisses every active custom panel while unrelated
+keys pass through, and that button dismissal clears both panel and scheduled-task
+state through the same cleanup path. Reduce Motion skips the Status Feedback
+evaluation delay; the panels otherwise use no animated entry or exit transitions.
+Persisted conflicting channel selections are normalized deterministically to
+Decision Banner and Pointer Card, the first choices in their respective policy
+groups. Because these tests stop at the AppKit/UserNotifications seam,
+they do not claim physical Notification Center or Dock appearance, audible speaker
+output, behavior on a real full-screen Space, or Escape handling while another app
+owns keyboard focus. The Escape monitor is intentionally local so Shortcut Coach
+does not capture a system-wide Escape key or introduce another privacy permission.
+Those checks require a signed app running in a controlled
+macOS QA account with screen/audio capture.
