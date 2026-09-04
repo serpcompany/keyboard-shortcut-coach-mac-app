@@ -3,66 +3,108 @@ import XCTest
 @testable import ShortcutCoach
 
 final class StandardWindowControlTests: XCTestCase {
-    func testMinimizeEmitsOnlyAfterTheSameWindowBecomesMinimized() {
-        let pre = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 0, y: 0, width: 800, height: 600))
-        let unchanged = WindowControlState(present: true, minimized: false, fullScreen: false, frame: pre.frame)
-        let minimized = WindowControlState(present: true, minimized: true, fullScreen: false, frame: pre.frame)
+    private let detector = WindowControlActionDetector()
 
-        XCTAssertNil(WindowControlPolicy.event(kind: .minimize, applicationName: "Finder", shortcut: "⌘M", pre: pre, post: unchanged, pointer: .zero))
-        XCTAssertEqual(WindowControlPolicy.event(kind: .minimize, applicationName: "Finder", shortcut: "⌘M", pre: pre, post: minimized, pointer: .zero)?.shortcut, "⌘M")
+    func testMinimizeEmitsOnlyAfterTheSameWindowBecomesMinimized() {
+        XCTAssertNil(detector.detect(trace(kind: .minimize), applicationName: "Finder", pointer: .zero))
+        let minimized = trace(kind: .minimize, postMinimized: true)
+        XCTAssertEqual(detector.detect(minimized, applicationName: "Finder", pointer: .zero)?.shortcut, "⌘M")
     }
 
     func testCloseWindowRequiresTheCapturedWindowToDisappear() {
-        let pre = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 0, y: 0, width: 800, height: 600))
-        XCTAssertNil(WindowControlPolicy.event(kind: .close, applicationName: "Google Chrome", shortcut: "⇧⌘W", pre: pre, post: pre, pointer: .zero))
-
-        let closed = WindowControlState(present: false, minimized: nil, fullScreen: nil, frame: nil)
-        let event = WindowControlPolicy.event(kind: .close, applicationName: "Google Chrome", shortcut: "⇧⌘W", pre: pre, post: closed, pointer: .zero)
+        XCTAssertNil(detector.detect(trace(kind: .close), applicationName: "Google Chrome", pointer: .zero))
+        let closed = trace(kind: .close, postPresent: false, shortcut: "⇧⌘W")
+        let event = detector.detect(closed, applicationName: "Google Chrome", pointer: .zero)
         XCTAssertEqual(event?.actionTitle, "Close Window")
         XCTAssertEqual(event?.shortcut, "⇧⌘W")
     }
 
-    func testFullScreenRequiresStateToggleAndWindowFrameTransition() {
-        let pre = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 50, y: 50, width: 800, height: 600))
-        XCTAssertNil(WindowControlPolicy.event(kind: .fullScreen, applicationName: "Finder", shortcut: "⌃⌘F", pre: pre, post: pre, pointer: .zero))
+    func testChromeFullScreenRequiresStateToggleAndFrameTransition() {
+        XCTAssertNil(detector.detect(trace(kind: .fullScreen), applicationName: "Google Chrome", pointer: .zero))
+        let resizedOnly = trace(kind: .fullScreen, frameChanged: true)
+        XCTAssertNil(detector.detect(resizedOnly, applicationName: "Google Chrome", pointer: .zero))
 
-        let resizedOnly = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 0, y: 0, width: 1728, height: 1117))
-        XCTAssertNil(WindowControlPolicy.event(kind: .fullScreen, applicationName: "Finder", shortcut: "⌃⌘F", pre: pre, post: resizedOnly, pointer: .zero))
-
-        let expanded = WindowControlState(present: true, minimized: false, fullScreen: true, frame: CGRect(x: 0, y: 0, width: 1728, height: 1117))
-        XCTAssertEqual(WindowControlPolicy.event(kind: .fullScreen, applicationName: "Finder", shortcut: "⌃⌘F", pre: pre, post: expanded, pointer: .zero)?.shortcut, "⌃⌘F")
+        let entered = trace(kind: .fullScreen, shortcut: "⌃⌘F", postFullScreen: true, frameChanged: true)
+        XCTAssertEqual(detector.detect(entered, applicationName: "Google Chrome", pointer: .zero)?.actionTitle, "Enter Full Screen")
     }
 
     func testExitFullScreenRequiresTheInverseStateAndFrameTransition() {
-        let pre = WindowControlState(present: true, minimized: false, fullScreen: true, frame: CGRect(x: 0, y: 0, width: 1728, height: 1117))
-        let exited = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 50, y: 50, width: 800, height: 600))
-        let event = WindowControlPolicy.event(kind: .fullScreen, applicationName: "Finder", shortcut: "⌃⌘F", pre: pre, post: exited, pointer: .zero)
-        XCTAssertEqual(event?.actionTitle, "Exit Full Screen")
+        let exited = trace(kind: .fullScreen, shortcut: "⌃⌘F", preFullScreen: true, postFullScreen: false, frameChanged: true)
+        XCTAssertEqual(detector.detect(exited, applicationName: "Google Chrome", pointer: .zero)?.actionTitle, "Exit Full Screen")
     }
 
-    func testMissingOrAmbiguousLiveShortcutSuppressesAllControls() {
-        let pre = WindowControlState(present: true, minimized: false, fullScreen: false, frame: CGRect(x: 0, y: 0, width: 800, height: 600))
-        let minimized = WindowControlState(present: true, minimized: true, fullScreen: false, frame: pre.frame)
-        XCTAssertNil(WindowControlPolicy.event(kind: .minimize, applicationName: "Finder", shortcut: nil, pre: pre, post: minimized, pointer: .zero))
-        XCTAssertNil(WindowControlPolicy.event(kind: .minimize, applicationName: "Finder", shortcut: "", pre: pre, post: minimized, pointer: .zero))
-        XCTAssertNil(WindowControlPolicy.uniqueShortcut(from: []))
-        XCTAssertNil(WindowControlPolicy.uniqueShortcut(from: ["⌘M", "⌘M"]))
-        XCTAssertEqual(WindowControlPolicy.uniqueShortcut(from: ["⌘M"]), "⌘M")
+    func testGenericAXFullScreenTransitionsStaySuppressedWithoutAnAppAdapter() {
+        for profile in [WindowControlApplicationProfile.finder, .safari, .other] {
+            let generic = trace(kind: .fullScreen, profile: profile, shortcut: "⌃⌘F", postFullScreen: true, frameChanged: true)
+            XCTAssertNil(detector.detect(generic, applicationName: "Other app", pointer: .zero))
+        }
+    }
+
+    func testMissingAmbiguousOrStaleLiveShortcutSuppresses() {
+        XCTAssertNil(WindowControlActionDetector.uniqueShortcut(from: []))
+        XCTAssertNil(WindowControlActionDetector.uniqueShortcut(from: ["⌘M", "⌘M"]))
+        XCTAssertEqual(WindowControlActionDetector.uniqueShortcut(from: ["⌘M"]), "⌘M")
+        XCTAssertTrue(WindowControlActionDetector.shortcutIsCurrent("⌘M", reread: "⌘M"))
+        XCTAssertFalse(WindowControlActionDetector.shortcutIsCurrent("⌘M", reread: nil))
+        XCTAssertFalse(WindowControlActionDetector.shortcutIsCurrent("⌘M", reread: "⌘W"))
     }
 
     func testModifiedAndUnknownFlagGesturesSuppressButBookkeepingBitDoesNot() {
-        XCTAssertTrue(WindowControlPolicy.hasDisallowedModifiers(.maskAlternate))
-        XCTAssertTrue(WindowControlPolicy.hasDisallowedModifiers(.maskShift))
-        XCTAssertTrue(WindowControlPolicy.hasDisallowedModifiers(CGEventFlags(rawValue: 1 << 40)))
-        XCTAssertFalse(WindowControlPolicy.hasDisallowedModifiers([]))
-        XCTAssertFalse(WindowControlPolicy.hasDisallowedModifiers(.maskNonCoalesced))
+        for flag in [CGEventFlags.maskAlphaShift, .maskShift, .maskControl, .maskAlternate,
+                     .maskCommand, .maskNumericPad, .maskHelp, .maskSecondaryFn] {
+            XCTAssertTrue(WindowControlActionDetector.hasDisallowedModifiers(flag))
+        }
+        XCTAssertTrue(WindowControlActionDetector.hasDisallowedModifiers(CGEventFlags(rawValue: 1 << 40)))
+        XCTAssertFalse(WindowControlActionDetector.hasDisallowedModifiers([]))
+        XCTAssertFalse(WindowControlActionDetector.hasDisallowedModifiers(.maskNonCoalesced))
     }
 
     func testOnlyKnownNonModalStandardWindowsAreAccepted() {
-        XCTAssertTrue(WindowControlPolicy.acceptsWindow(isStandard: true, isModal: false))
-        XCTAssertFalse(WindowControlPolicy.acceptsWindow(isStandard: false, isModal: false))
-        XCTAssertFalse(WindowControlPolicy.acceptsWindow(isStandard: true, isModal: true))
-        XCTAssertFalse(WindowControlPolicy.acceptsWindow(isStandard: nil, isModal: false))
-        XCTAssertFalse(WindowControlPolicy.acceptsWindow(isStandard: true, isModal: nil))
+        XCTAssertTrue(WindowControlActionDetector.acceptsWindow(isStandard: true, isModal: false))
+        XCTAssertFalse(WindowControlActionDetector.acceptsWindow(isStandard: false, isModal: false))
+        XCTAssertFalse(WindowControlActionDetector.acceptsWindow(isStandard: true, isModal: true))
+        XCTAssertFalse(WindowControlActionDetector.acceptsWindow(isStandard: nil, isModal: false))
+        XCTAssertFalse(WindowControlActionDetector.acceptsWindow(isStandard: true, isModal: nil))
+    }
+
+    func testCapturedSanitizedTraceReplaysThroughProductionDetector() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("docs/evidence/window-controls/chrome-green-captured-sanitized-trace.json")
+        let data = try Data(contentsOf: fixtureURL)
+        let trace = try JSONDecoder().decode(WindowControlTrace.self, from: data)
+        XCTAssertEqual(detector.detect(trace, applicationName: "Google Chrome", pointer: .zero)?.actionTitle, "Enter Full Screen")
+
+        let text = String(decoding: data, as: UTF8.self).lowercased()
+        for forbidden in ["windowtitle", "documenttitle", "contents", "pointerx", "pointery", "pid", "token"] {
+            XCTAssertFalse(text.contains(forbidden), "sanitized trace leaked forbidden field: \(forbidden)")
+        }
+    }
+
+    private func trace(
+        kind: StandardWindowControlKind,
+        profile: WindowControlApplicationProfile = .googleChrome,
+        postPresent: Bool = true,
+        shortcut: String = "⌘M",
+        preMinimized: Bool? = false,
+        postMinimized: Bool? = false,
+        preFullScreen: Bool? = false,
+        postFullScreen: Bool? = false,
+        frameChanged: Bool = false
+    ) -> WindowControlTrace {
+        WindowControlTrace(
+            schemaVersion: WindowControlActionDetector.currentSchemaVersion,
+            kind: kind,
+            applicationProfile: profile,
+            shortcut: shortcut,
+            prePresent: true,
+            postPresent: postPresent,
+            preMinimized: preMinimized,
+            postMinimized: postMinimized,
+            preFullScreen: preFullScreen,
+            postFullScreen: postFullScreen,
+            frameChanged: frameChanged
+        )
     }
 }

@@ -3,7 +3,7 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-enum StandardWindowControlKind: Equatable, Sendable {
+enum StandardWindowControlKind: String, Codable, Equatable, Sendable {
     case close
     case minimize
     case fullScreen
@@ -16,7 +16,38 @@ struct WindowControlState: Equatable, Sendable {
     let frame: CGRect?
 }
 
-enum WindowControlPolicy {
+enum WindowControlApplicationProfile: String, Codable, Equatable, Sendable {
+    case googleChrome
+    case finder
+    case safari
+    case other
+
+    init(bundleIdentifier: String) {
+        switch bundleIdentifier {
+        case "com.google.Chrome": self = .googleChrome
+        case "com.apple.finder": self = .finder
+        case "com.apple.Safari": self = .safari
+        default: self = .other
+        }
+    }
+}
+
+struct WindowControlTrace: Codable, Equatable, Sendable {
+    let schemaVersion: Int
+    let kind: StandardWindowControlKind
+    let applicationProfile: WindowControlApplicationProfile
+    let shortcut: String
+    let prePresent: Bool
+    let postPresent: Bool
+    let preMinimized: Bool?
+    let postMinimized: Bool?
+    let preFullScreen: Bool?
+    let postFullScreen: Bool?
+    let frameChanged: Bool
+}
+
+struct WindowControlActionDetector {
+    static let currentSchemaVersion = 1
     private static let userModifierFlags: CGEventFlags = [
         .maskAlphaShift, .maskShift, .maskControl, .maskAlternate,
         .maskCommand, .maskNumericPad, .maskHelp, .maskSecondaryFn
@@ -32,46 +63,54 @@ enum WindowControlPolicy {
         matches.count == 1 && !matches[0].isEmpty ? matches[0] : nil
     }
 
+    static func shortcutIsCurrent(_ captured: String, reread: String?) -> Bool {
+        !captured.isEmpty && reread == captured
+    }
+
     static func acceptsWindow(isStandard: Bool?, isModal: Bool?) -> Bool {
         isStandard == true && isModal == false
     }
 
-    static func event(
-        kind: StandardWindowControlKind,
+    func detect(
+        _ trace: WindowControlTrace,
         applicationName: String,
-        shortcut: String?,
-        pre: WindowControlState,
-        post: WindowControlState,
         pointer: CGPoint
     ) -> CoachingEvent? {
-        guard pre.present, let shortcut, !shortcut.isEmpty else { return nil }
+        guard trace.schemaVersion == Self.currentSchemaVersion,
+              trace.prePresent,
+              !trace.shortcut.isEmpty else { return nil }
         let completed: Bool
         let title: String
-        switch kind {
+        switch trace.kind {
         case .minimize:
-            completed = pre.minimized == false && post.present && post.minimized == true
+            completed = trace.preMinimized == false && trace.postPresent && trace.postMinimized == true
             title = "Minimize Window"
         case .close:
-            completed = pre.present && !post.present
+            completed = !trace.postPresent
             title = "Close Window"
         case .fullScreen:
-            if let before = pre.frame, let after = post.frame {
-                let changedFrame = abs(before.width - after.width) > 20 || abs(before.height - after.height) > 20
-                completed = post.present && changedFrame
-                    && pre.fullScreen != nil && post.fullScreen == !(pre.fullScreen ?? false)
-            } else {
-                completed = false
-            }
-            title = pre.fullScreen == true ? "Exit Full Screen" : "Enter Full Screen"
+            completed = fullScreenTransitionCompleted(trace)
+            title = trace.preFullScreen == true ? "Exit Full Screen" : "Enter Full Screen"
         }
         guard completed else { return nil }
         return CoachingEvent(
             applicationName: applicationName,
             actionTitle: title,
-            shortcut: shortcut,
+            shortcut: trace.shortcut,
             pointerX: pointer.x,
             pointerY: pointer.y
         )
+    }
+
+    private func fullScreenTransitionCompleted(_ trace: WindowControlTrace) -> Bool {
+        // Chrome is the only green-button behavior characterized by the
+        // captured acceptance run. Other apps remain suppressed until each
+        // gets its own adapter instead of inheriting generic frame logic.
+        guard trace.applicationProfile == .googleChrome else { return false }
+        return trace.postPresent
+            && trace.frameChanged
+            && trace.preFullScreen != nil
+            && trace.postFullScreen == !(trace.preFullScreen ?? false)
     }
 }
 
@@ -79,6 +118,7 @@ final class StandardWindowControlMonitor {
     private final class Session {
         let kind: StandardWindowControlKind
         let applicationName: String
+        let applicationProfile: WindowControlApplicationProfile
         let processIdentifier: pid_t
         let application: AXUIElement
         let window: AXUIElement
@@ -90,12 +130,14 @@ final class StandardWindowControlMonitor {
         var maximumTravel: CGFloat = 0
         var modifiersPresent = false
 
-        init(kind: StandardWindowControlKind, applicationName: String, processIdentifier: pid_t,
+        init(kind: StandardWindowControlKind, applicationName: String,
+             applicationProfile: WindowControlApplicationProfile, processIdentifier: pid_t,
              application: AXUIElement, window: AXUIElement, buttonFrame: CGRect,
              preState: WindowControlState, shortcut: String, pointerDown: CGPoint,
              downTimestamp: TimeInterval) {
             self.kind = kind
             self.applicationName = applicationName
+            self.applicationProfile = applicationProfile
             self.processIdentifier = processIdentifier
             self.application = application
             self.window = window
@@ -111,6 +153,7 @@ final class StandardWindowControlMonitor {
     // Keep AX access serialized with the snapshotter. AppKit can service a
     // hit-test against our own SwiftUI hierarchy in-process.
     private let queue = DispatchQueue.main
+    private let detector = WindowControlActionDetector()
     private var session: Session?
 
     func receive(_ sample: PointerSample) {
@@ -127,7 +170,7 @@ final class StandardWindowControlMonitor {
             begin(sample)
         case .dragged:
             guard let session else { return }
-            session.modifiersPresent = session.modifiersPresent || WindowControlPolicy.hasDisallowedModifiers(sample.modifiers)
+            session.modifiersPresent = session.modifiersPresent || WindowControlActionDetector.hasDisallowedModifiers(sample.modifiers)
             session.maximumTravel = max(
                 session.maximumTravel,
                 hypot(sample.location.x - session.pointerDown.x, sample.location.y - session.pointerDown.y)
@@ -141,12 +184,12 @@ final class StandardWindowControlMonitor {
 
     private func begin(_ sample: PointerSample) {
         session = nil
-        guard !WindowControlPolicy.hasDisallowedModifiers(sample.modifiers),
+        guard !WindowControlActionDetector.hasDisallowedModifiers(sample.modifiers),
               let hit = element(at: sample.location),
               let kind = controlKind(hit),
               let window = containingWindow(for: hit),
               let frame = frame(of: hit),
-              WindowControlPolicy.acceptsWindow(
+              WindowControlActionDetector.acceptsWindow(
                 isStandard: (attribute(kAXSubroleAttribute, from: window) as String?) == kAXStandardWindowSubrole as String,
                 isModal: attribute(kAXModalAttribute, from: window)
               ) else { return }
@@ -161,10 +204,11 @@ final class StandardWindowControlMonitor {
         let application = AXUIElementCreateApplication(pid)
         let pre = state(of: window, in: application)
         guard pre.present else { return }
-        guard let shortcut = liveShortcut(for: kind, in: application) else { return }
+        guard let shortcut = liveShortcut(for: kind, in: application, state: pre, requireEnabled: true) else { return }
         session = Session(
             kind: kind,
             applicationName: running.localizedName ?? "Current app",
+            applicationProfile: WindowControlApplicationProfile(bundleIdentifier: bundle),
             processIdentifier: pid,
             application: application,
             window: window,
@@ -179,7 +223,7 @@ final class StandardWindowControlMonitor {
     private func finishGesture(_ sample: PointerSample) {
         guard let current = session else { return }
         guard !current.modifiersPresent,
-              !WindowControlPolicy.hasDisallowedModifiers(sample.modifiers),
+              !WindowControlActionDetector.hasDisallowedModifiers(sample.modifiers),
               NSWorkspace.shared.frontmostApplication?.processIdentifier == current.processIdentifier,
               sample.timestamp - current.downTimestamp <= 1.5,
               current.maximumTravel <= 4,
@@ -187,35 +231,58 @@ final class StandardWindowControlMonitor {
             session = nil
             return
         }
+        guard WindowControlActionDetector.shortcutIsCurrent(
+            current.shortcut,
+            reread: liveShortcut(for: current.kind, in: current.application,
+                                 state: current.preState, requireEnabled: true)
+        ) else {
+            session = nil
+            return
+        }
 
         queue.asyncAfter(deadline: .now() + 0.35) { [weak self, weak current] in
             guard let self, let current, self.session === current else { return }
-            if let event = WindowControlPolicy.event(
-                kind: current.kind,
-                applicationName: current.applicationName,
-                shortcut: current.shortcut,
-                pre: current.preState,
-                post: self.state(of: current.window, in: current.application),
-                pointer: current.pointerDown
-            ) {
+            if let event = self.verifiedEvent(for: current) {
                 self.session = nil
                 DispatchQueue.main.async { [weak self] in self?.onEvent?(event) }
                 return
             }
             self.queue.asyncAfter(deadline: .now() + 0.65) { [weak self, weak current] in
                 guard let self, let current, self.session === current else { return }
-                let event = WindowControlPolicy.event(
-                    kind: current.kind,
-                    applicationName: current.applicationName,
-                    shortcut: current.shortcut,
-                    pre: current.preState,
-                    post: self.state(of: current.window, in: current.application),
-                    pointer: current.pointerDown
-                )
+                let event = self.verifiedEvent(for: current)
                 self.session = nil
                 if let event { DispatchQueue.main.async { [weak self] in self?.onEvent?(event) } }
             }
         }
+    }
+
+    private func verifiedEvent(for session: Session) -> CoachingEvent? {
+        let post = state(of: session.window, in: session.application)
+        guard WindowControlActionDetector.shortcutIsCurrent(
+            session.shortcut,
+            reread: liveShortcut(for: session.kind, in: session.application,
+                                 state: post, requireEnabled: false)
+        ) else { return nil }
+        let frameChanged: Bool
+        if let before = session.preState.frame, let after = post.frame {
+            frameChanged = abs(before.width - after.width) > 20 || abs(before.height - after.height) > 20
+        } else {
+            frameChanged = false
+        }
+        let trace = WindowControlTrace(
+            schemaVersion: WindowControlActionDetector.currentSchemaVersion,
+            kind: session.kind,
+            applicationProfile: session.applicationProfile,
+            shortcut: session.shortcut,
+            prePresent: session.preState.present,
+            postPresent: post.present,
+            preMinimized: session.preState.minimized,
+            postMinimized: post.minimized,
+            preFullScreen: session.preState.fullScreen,
+            postFullScreen: post.fullScreen,
+            frameChanged: frameChanged
+        )
+        return detector.detect(trace, applicationName: session.applicationName, pointer: session.pointerDown)
     }
 
     private func controlKind(_ element: AXUIElement) -> StandardWindowControlKind? {
@@ -240,7 +307,12 @@ final class StandardWindowControlMonitor {
         )
     }
 
-    private func liveShortcut(for kind: StandardWindowControlKind, in application: AXUIElement) -> String? {
+    private func liveShortcut(
+        for kind: StandardWindowControlKind,
+        in application: AXUIElement,
+        state: WindowControlState,
+        requireEnabled: Bool
+    ) -> String? {
         guard let menuBar: AXUIElement = attribute(kAXMenuBarAttribute, from: application) else { return nil }
         var frontier = [menuBar]
         var visited = 0
@@ -249,9 +321,9 @@ final class StandardWindowControlMonitor {
             let element = frontier.removeFirst()
             visited += 1
             if (attribute(kAXRoleAttribute, from: element) as String?) == kAXMenuItemRole as String,
-               (attribute(kAXEnabledAttribute, from: element) as Bool?) != false,
+               (!requireEnabled || (attribute(kAXEnabledAttribute, from: element) as Bool?) != false),
                let title: String = attribute(kAXTitleAttribute, from: element),
-               menuTitle(title, matches: kind),
+               menuTitle(title, matches: kind, state: state),
                let command: String = attribute(kAXMenuItemCmdCharAttribute, from: element) {
                 let modifiers: NSNumber? = attribute(kAXMenuItemCmdModifiersAttribute, from: element)
                 let raw = modifiers?.intValue ?? 0
@@ -260,16 +332,17 @@ final class StandardWindowControlMonitor {
             let children: [AXUIElement] = attribute(kAXChildrenAttribute, from: element) ?? []
             frontier.append(contentsOf: children)
         }
-        return WindowControlPolicy.uniqueShortcut(from: matches)
+        return WindowControlActionDetector.uniqueShortcut(from: matches)
     }
 
-    private func menuTitle(_ title: String, matches kind: StandardWindowControlKind) -> Bool {
+    private func menuTitle(_ title: String, matches kind: StandardWindowControlKind, state: WindowControlState) -> Bool {
         let normalized = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         switch kind {
         case .minimize: return normalized == "minimize" || normalized == "miniaturize"
         case .close: return normalized == "close window" || normalized == "close"
-        case .fullScreen: return normalized == "enter full screen" || normalized == "exit full screen"
+        case .fullScreen:
+            return state.fullScreen == true ? normalized == "exit full screen" : normalized == "enter full screen"
         }
     }
 
