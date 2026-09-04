@@ -3,7 +3,7 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-enum FinderTrashItemEligibility: String, Equatable, Sendable {
+enum FinderTrashItemEligibility: String, Codable, Equatable, Sendable {
     case supportedRegularItem
     case multipleSelection
     case volume
@@ -14,13 +14,14 @@ enum FinderTrashItemEligibility: String, Equatable, Sendable {
     case unknown
 }
 
-enum FinderTrashPostcondition: String, Equatable, Sendable {
+enum FinderTrashPostcondition: String, Codable, Equatable, Sendable {
     case removedFromOriginalParent
     case stillPresent
     case inaccessible
 }
 
-struct FinderTrashObservation: Equatable, Sendable {
+struct DragDropTrace: Codable, Equatable, Sendable {
+    let schemaVersion: Int
     let itemEligibility: FinderTrashItemEligibility
     let releasedOnDockTrash: Bool
     let meaningfulDrag: Bool
@@ -28,13 +29,60 @@ struct FinderTrashObservation: Equatable, Sendable {
     let postcondition: FinderTrashPostcondition
 }
 
-enum FinderTrashPolicy {
-    static func event(from observation: FinderTrashObservation) -> CoachingEvent? {
-        guard observation.itemEligibility == .supportedRegularItem,
-              observation.releasedOnDockTrash,
-              observation.meaningfulDrag,
-              !observation.modifiersPresent,
-              observation.postcondition == .removedFromOriginalParent else { return nil }
+struct FinderItemFacts: Equatable, Sendable {
+    let isFileURL: Bool
+    let isRegularFile: Bool?
+    let isDirectory: Bool?
+    let isSymbolicLink: Bool?
+    let isAliasFile: Bool?
+    let isVolume: Bool?
+    let isWritable: Bool?
+    let volumeIsLocal: Bool?
+    let volumeIsInternal: Bool?
+    let volumeIsRemovable: Bool?
+    let volumeIsEjectable: Bool?
+    let volumeIsReadOnly: Bool?
+    let isUserImmutable: Bool?
+    let isSystemImmutable: Bool?
+}
+
+struct DragDropActionDetector {
+    static let currentSchemaVersion = 1
+    private static let userModifierFlags: CGEventFlags = [
+        .maskAlphaShift, .maskShift, .maskControl, .maskAlternate,
+        .maskCommand, .maskNumericPad, .maskHelp, .maskSecondaryFn
+    ]
+
+    static func hasDisallowedModifiers(_ flags: CGEventFlags) -> Bool {
+        if !flags.intersection(userModifierFlags).isEmpty { return true }
+        let allowedBookkeepingBits = CGEventFlags.maskNonCoalesced.rawValue
+        return flags.rawValue & ~(userModifierFlags.rawValue | allowedBookkeepingBits) != 0
+    }
+
+    static func eligibility(for facts: FinderItemFacts) -> FinderTrashItemEligibility {
+        guard facts.isFileURL else { return .unknown }
+        if facts.isVolume == true { return .volume }
+        guard facts.isVolume == false else { return .unknown }
+        if facts.isAliasFile == true || facts.isSymbolicLink == true { return .alias }
+        guard facts.isAliasFile == false, facts.isSymbolicLink == false else { return .unknown }
+        if facts.isUserImmutable == true || facts.isSystemImmutable == true { return .lockedOrImmutable }
+        guard facts.isUserImmutable == false, facts.isSystemImmutable == false else { return .unknown }
+        guard facts.volumeIsLocal == true,
+              facts.volumeIsInternal == true,
+              facts.volumeIsRemovable == false,
+              facts.volumeIsEjectable == false else { return .externalOrNetwork }
+        guard facts.isWritable == true, facts.volumeIsReadOnly == false else { return .readOnly }
+        guard facts.isRegularFile == true || facts.isDirectory == true else { return .unknown }
+        return .supportedRegularItem
+    }
+
+    func detect(_ trace: DragDropTrace) -> CoachingEvent? {
+        guard trace.schemaVersion == Self.currentSchemaVersion,
+              trace.itemEligibility == .supportedRegularItem,
+              trace.releasedOnDockTrash,
+              trace.meaningfulDrag,
+              !trace.modifiersPresent,
+              trace.postcondition == .removedFromOriginalParent else { return nil }
         return CoachingEvent(applicationName: "Finder", actionTitle: "Move to Trash", shortcut: "⌘⌫")
     }
 }
@@ -63,6 +111,7 @@ final class FinderTrashMonitor {
     var onEvent: ((CoachingEvent) -> Void)?
     // Keep AX access serialized with every other detector path.
     private let queue = DispatchQueue.main
+    private let detector = DragDropActionDetector()
     private var session: Session?
 
     func receive(_ sample: PointerSample) {
@@ -79,16 +128,17 @@ final class FinderTrashMonitor {
             begin(sample)
         case .dragged:
             guard let session else { return }
-            session.modifiersPresent = session.modifiersPresent || hasModifiers(sample.modifiers)
+            session.modifiersPresent = session.modifiersPresent || DragDropActionDetector.hasDisallowedModifiers(sample.modifiers)
             session.maximumTravel = max(session.maximumTravel, hypot(sample.location.x - session.down.x, sample.location.y - session.down.y))
         case .up:
             guard let current = session else { return }
             let targetIsTrash = isDockTrash(at: sample.location)
-            let modified = current.modifiersPresent || hasModifiers(sample.modifiers)
+            let modified = current.modifiersPresent || DragDropActionDetector.hasDisallowedModifiers(sample.modifiers)
             let meaningful = current.maximumTravel >= 8
             queue.asyncAfter(deadline: .now() + 0.45) { [weak self, weak current] in
                 guard let self, let current, self.session === current else { return }
-                let observation = FinderTrashObservation(
+                let trace = DragDropTrace(
+                    schemaVersion: DragDropActionDetector.currentSchemaVersion,
                     itemEligibility: current.itemEligibility,
                     releasedOnDockTrash: targetIsTrash,
                     meaningfulDrag: meaningful,
@@ -96,7 +146,7 @@ final class FinderTrashMonitor {
                     postcondition: self.postcondition(for: current)
                 )
                 self.session = nil
-                if let event = FinderTrashPolicy.event(from: observation) {
+                if let event = self.detector.detect(trace) {
                     DispatchQueue.main.async { [weak self] in self?.onEvent?(event) }
                 }
             }
@@ -107,7 +157,7 @@ final class FinderTrashMonitor {
 
     private func begin(_ sample: PointerSample) {
         session = nil
-        guard !hasModifiers(sample.modifiers),
+        guard !DragDropActionDetector.hasDisallowedModifiers(sample.modifiers),
               let hit = element(at: sample.location),
               applicationBundle(for: hit) == "com.apple.finder",
               isFinderItem(hit) else { return }
@@ -129,19 +179,29 @@ final class FinderTrashMonitor {
         case .unknown: return .unknown
         case .exactlyOne: break
         }
-        guard let url = elementURL(element), url.isFileURL,
+        guard let url = elementURL(element),
               let values = try? url.resourceValues(forKeys: [
                 .isRegularFileKey, .isDirectoryKey, .isSymbolicLinkKey, .isAliasFileKey,
-                .isVolumeKey, .isWritableKey, .volumeIsLocalKey, .volumeIsReadOnlyKey,
+                .isVolumeKey, .isWritableKey, .volumeIsLocalKey, .volumeIsInternalKey,
+                .volumeIsRemovableKey, .volumeIsEjectableKey, .volumeIsReadOnlyKey,
                 .isUserImmutableKey, .isSystemImmutableKey
               ]) else { return .unknown }
-        if values.isVolume == true { return .volume }
-        if values.isAliasFile == true || values.isSymbolicLink == true { return .alias }
-        if values.isUserImmutable == true || values.isSystemImmutable == true { return .lockedOrImmutable }
-        guard values.volumeIsLocal == true else { return .externalOrNetwork }
-        guard values.isWritable == true, values.volumeIsReadOnly == false else { return .readOnly }
-        guard values.isRegularFile == true || values.isDirectory == true else { return .unknown }
-        return .supportedRegularItem
+        return DragDropActionDetector.eligibility(for: FinderItemFacts(
+            isFileURL: url.isFileURL,
+            isRegularFile: values.isRegularFile,
+            isDirectory: values.isDirectory,
+            isSymbolicLink: values.isSymbolicLink,
+            isAliasFile: values.isAliasFile,
+            isVolume: values.isVolume,
+            isWritable: values.isWritable,
+            volumeIsLocal: values.volumeIsLocal,
+            volumeIsInternal: values.volumeIsInternal,
+            volumeIsRemovable: values.volumeIsRemovable,
+            volumeIsEjectable: values.volumeIsEjectable,
+            volumeIsReadOnly: values.volumeIsReadOnly,
+            isUserImmutable: values.isUserImmutable,
+            isSystemImmutable: values.isSystemImmutable
+        ))
     }
 
     private func settledSelectionStatus(_ element: AXUIElement, parent: AXUIElement?) -> SelectionStatus {
@@ -175,10 +235,6 @@ final class FinderTrashMonitor {
         guard AXUIElementCopyAttributeValue(parent, kAXChildrenAttribute as CFString, &rawChildren) == .success,
               let children = rawChildren as? [AXUIElement] else { return .inaccessible }
         return children.contains { CFEqual($0, session.source) } ? .stillPresent : .removedFromOriginalParent
-    }
-
-    private func hasModifiers(_ flags: CGEventFlags) -> Bool {
-        !flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty
     }
 
     private func element(at point: CGPoint) -> AXUIElement? {
