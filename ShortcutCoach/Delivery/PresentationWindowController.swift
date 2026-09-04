@@ -26,7 +26,7 @@ final class PresentationWindowController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = style != .cursorHalo
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.collectionBehavior = panelCollectionBehavior
         panel.hidesOnDeactivate = false
         panel.isMovable = false
         panel.contentView = NSHostingView(rootView: CoachingPresentationView(
@@ -39,15 +39,16 @@ final class PresentationWindowController {
         panels[style] = panel
 
         dismissalTasks[style] = Task { [weak self, weak panel] in
-            let delay: UInt64 = style == .decisionBanner ? 8_000_000_000 : 4_000_000_000
+            guard let self else { return }
+            let delay = dismissalDelayNanoseconds(for: style)
             try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled else { return }
             panel?.orderOut(nil)
-            self?.panels[style] = nil
+            panels[style] = nil
         }
     }
 
-    private func panelSize(for style: NotificationChannel) -> NSSize {
+    func panelSize(for style: NotificationChannel) -> NSSize {
         switch style {
         case .topRightToast: NSSize(width: 360, height: 92)
         case .topCenterShelf: NSSize(width: 500, height: 112)
@@ -59,13 +60,47 @@ final class PresentationWindowController {
         }
     }
 
-    private func origin(for style: NotificationChannel, size: NSSize, event: CoachingEvent) -> NSPoint {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
-        let visible = screen.visibleFrame
-        let pointer = event.pointerX.flatMap { x in
-            event.pointerY.map { y in NSPoint(x: x, y: screen.frame.maxY - y) }
-        } ?? NSEvent.mouseLocation
+    var panelCollectionBehavior: NSWindow.CollectionBehavior {
+        [.canJoinAllSpaces, .fullScreenAuxiliary]
+    }
 
+    func dismissalDelayNanoseconds(for style: NotificationChannel) -> UInt64 {
+        style == .decisionBanner ? 8_000_000_000 : 4_000_000_000
+    }
+
+    private func origin(for style: NotificationChannel, size: NSSize, event: CoachingEvent) -> NSPoint {
+        let primaryScreen = NSScreen.screens[0]
+        let fallbackScreen = NSScreen.main ?? primaryScreen
+        let pointer = event.pointerX.flatMap { x in
+            event.pointerY.map { y in
+                PresentationLayout.appKitPoint(
+                    fromQuartzPoint: NSPoint(x: x, y: y),
+                    primaryScreenFrame: primaryScreen.frame
+                )
+            }
+        } ?? NSEvent.mouseLocation
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) }) ?? fallbackScreen
+
+        return PresentationLayout.origin(
+            for: style,
+            size: size,
+            visibleFrame: screen.visibleFrame,
+            pointer: pointer
+        )
+    }
+}
+
+enum PresentationLayout {
+    static func appKitPoint(fromQuartzPoint point: NSPoint, primaryScreenFrame: NSRect) -> NSPoint {
+        NSPoint(x: point.x, y: primaryScreenFrame.maxY - point.y)
+    }
+
+    static func origin(
+        for style: NotificationChannel,
+        size: NSSize,
+        visibleFrame visible: NSRect,
+        pointer: NSPoint
+    ) -> NSPoint {
         switch style {
         case .topRightToast:
             return NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20)
@@ -83,7 +118,7 @@ final class PresentationWindowController {
     }
 }
 
-private struct CoachingPresentationView: View {
+struct CoachingPresentationView: View {
     let event: CoachingEvent
     let style: NotificationChannel
     let onDismiss: () -> Void
