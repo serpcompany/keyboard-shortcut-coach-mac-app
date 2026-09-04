@@ -25,10 +25,15 @@ final class AppPreferences {
         let legacyChannels = legacyDefaults.lazy.compactMap {
             $0.array(forKey: Key.selectedChannels) as? [String]
         }.first
+        let channelsWereNormalized: Bool
         if let rawChannels = currentChannels ?? legacyChannels {
-            selectedChannels = Set(rawChannels.compactMap(NotificationChannel.init(rawValue:)))
+            let decodedChannels = Set(rawChannels.compactMap(NotificationChannel.init(rawValue:)))
+            let normalizedChannels = PresentationOverlapPolicy.normalized(decodedChannels)
+            selectedChannels = normalizedChannels
+            channelsWereNormalized = normalizedChannels != decodedChannels
         } else {
             selectedChannels = [.topRightToast, .dockBadge]
+            channelsWereNormalized = false
         }
 
         if defaults.object(forKey: Key.showInDockAndSwitcher) != nil {
@@ -41,7 +46,7 @@ final class AppPreferences {
             showInDockAndSwitcher = true
         }
 
-        if currentChannels == nil, legacyChannels != nil {
+        if (currentChannels == nil && legacyChannels != nil) || channelsWereNormalized {
             persistChannels()
         }
         if defaults.object(forKey: Key.showInDockAndSwitcher) == nil,

@@ -1,9 +1,10 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 @MainActor
 protocol KeyboardEventMonitoring: AnyObject {
-    func start(handler: @escaping (UInt16) -> Bool)
+    func startDismissalHandler(_ handler: @escaping () -> Bool)
     func stop()
 }
 
@@ -11,11 +12,16 @@ protocol KeyboardEventMonitoring: AnyObject {
 final class LocalKeyboardEventMonitor: KeyboardEventMonitoring {
     private var token: Any?
 
-    func start(handler: @escaping (UInt16) -> Bool) {
+    func startDismissalHandler(_ handler: @escaping () -> Bool) {
         guard token == nil else { return }
         token = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handler(event.keyCode) ? nil : event
+            guard Self.isDismissalEvent(event) else { return event }
+            return handler() ? nil : event
         }
+    }
+
+    static func isDismissalEvent(_ event: NSEvent) -> Bool {
+        event.keyCode == UInt16(kVK_Escape)
     }
 
     func stop() {
@@ -34,8 +40,8 @@ final class PresentationWindowController {
     init(keyboardMonitor: (any KeyboardEventMonitoring)? = nil) {
         let keyboardMonitor = keyboardMonitor ?? LocalKeyboardEventMonitor()
         self.keyboardMonitor = keyboardMonitor
-        keyboardMonitor.start { [weak self] keyCode in
-            self?.handleKeyDown(keyCode: keyCode) ?? false
+        keyboardMonitor.startDismissalHandler { [weak self] in
+            self?.handleDismissalCommand() ?? false
         }
     }
 
@@ -53,8 +59,8 @@ final class PresentationWindowController {
 
         dismissalTasks[style]?.cancel()
         dismiss(style)
-        if PresentationOverlapPolicy.topCenterChannels.contains(style) {
-            for conflictingStyle in PresentationOverlapPolicy.topCenterChannels where conflictingStyle != style {
+        if let exclusiveGroup = PresentationOverlapPolicy.exclusiveGroup(containing: style) {
+            for conflictingStyle in exclusiveGroup where conflictingStyle != style {
                 dismiss(conflictingStyle)
             }
         }
@@ -76,7 +82,7 @@ final class PresentationWindowController {
         panel.contentView = NSHostingView(rootView: CoachingPresentationView(
             event: event,
             style: style,
-            onDismiss: { [weak panel] in panel?.orderOut(nil) }
+            onDismiss: dismissalAction(for: style)
         ))
         panel.setFrameOrigin(origin(for: style, size: size, event: event))
         panel.orderFrontRegardless()
@@ -93,8 +99,8 @@ final class PresentationWindowController {
     }
 
     @discardableResult
-    func handleKeyDown(keyCode: UInt16) -> Bool {
-        guard keyCode == 53, !panels.isEmpty else { return false }
+    func handleDismissalCommand() -> Bool {
+        guard !panels.isEmpty else { return false }
         dismissAll()
         return true
     }
@@ -107,6 +113,10 @@ final class PresentationWindowController {
 
     var activeChannels: Set<NotificationChannel> {
         Set(panels.keys)
+    }
+
+    var scheduledDismissalChannels: Set<NotificationChannel> {
+        Set(dismissalTasks.keys)
     }
 
     func panelSize(for style: NotificationChannel) -> NSSize {
@@ -129,11 +139,15 @@ final class PresentationWindowController {
         style == .decisionBanner ? 8_000_000_000 : 4_000_000_000
     }
 
-    private func dismiss(_ style: NotificationChannel) {
+    func dismiss(_ style: NotificationChannel) {
         dismissalTasks[style]?.cancel()
         dismissalTasks[style] = nil
         panels[style]?.orderOut(nil)
         panels[style] = nil
+    }
+
+    func dismissalAction(for style: NotificationChannel) -> () -> Void {
+        { [weak self] in self?.dismiss(style) }
     }
 
     private func origin(for style: NotificationChannel, size: NSSize, event: CoachingEvent) -> NSPoint {
@@ -190,6 +204,7 @@ struct CoachingPresentationView: View {
     let event: CoachingEvent
     let style: NotificationChannel
     let onDismiss: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var statusCompleted = false
 
     var body: some View {
@@ -233,7 +248,11 @@ struct CoachingPresentationView: View {
         .accessibilityLabel("Shortcut coaching. \(event.actionTitle). Try \(event.shortcut) next time.")
         .task {
             guard style == .statusFeedback else { return }
-            try? await Task.sleep(for: .milliseconds(700))
+            let delay = PresentationMotionPolicy.statusFeedbackDelayNanoseconds(reduceMotion: reduceMotion)
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            guard !Task.isCancelled else { return }
             statusCompleted = true
         }
     }
@@ -250,5 +269,11 @@ struct CoachingPresentationView: View {
 
     private var statusImage: String {
         style == .statusFeedback && !statusCompleted ? "ellipsis.circle" : style.systemImage
+    }
+}
+
+enum PresentationMotionPolicy {
+    static func statusFeedbackDelayNanoseconds(reduceMotion: Bool) -> UInt64 {
+        reduceMotion ? 0 : 700_000_000
     }
 }

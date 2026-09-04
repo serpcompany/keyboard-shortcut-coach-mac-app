@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Observation
 import XCTest
 @testable import ShortcutCoach
@@ -56,11 +57,11 @@ private final class StubNativeNotificationCenter: NativeNotificationCenterClient
 
 @MainActor
 private final class StubKeyboardEventMonitor: KeyboardEventMonitoring {
-    private var handler: ((UInt16) -> Bool)?
+    private var handler: (() -> Bool)?
     private(set) var startCount = 0
     private(set) var stopCount = 0
 
-    func start(handler: @escaping (UInt16) -> Bool) {
+    func startDismissalHandler(_ handler: @escaping () -> Bool) {
         startCount += 1
         self.handler = handler
     }
@@ -70,8 +71,8 @@ private final class StubKeyboardEventMonitor: KeyboardEventMonitoring {
         handler = nil
     }
 
-    func send(keyCode: UInt16) -> Bool {
-        handler?(keyCode) ?? false
+    func sendDismissalCommand() -> Bool {
+        handler?() ?? false
     }
 }
 
@@ -360,21 +361,50 @@ final class ShortcutCoachTests: XCTestCase {
         }
     }
 
-    func testEscapeDismissesCustomPanelsAndOtherKeysPassThrough() {
+    func testEscapeDismissesCustomPanelsAndStopsBeingConsumedAfterCleanup() {
         let keyboard = StubKeyboardEventMonitor()
         let controller = PresentationWindowController(keyboardMonitor: keyboard)
 
         controller.show(event: .sample, style: .topRightToast)
         controller.show(event: .sample, style: .pointerCard)
         XCTAssertEqual(controller.activeChannels, [.topRightToast, .pointerCard])
-        XCTAssertFalse(keyboard.send(keyCode: 36))
-        XCTAssertEqual(controller.activeChannels, [.topRightToast, .pointerCard])
-
-        XCTAssertTrue(keyboard.send(keyCode: 53))
+        XCTAssertTrue(keyboard.sendDismissalCommand())
         XCTAssertTrue(controller.activeChannels.isEmpty)
+        XCTAssertTrue(controller.scheduledDismissalChannels.isEmpty)
+        XCTAssertFalse(keyboard.sendDismissalCommand())
     }
 
-    func testTopCenterPresentationsReplaceOneAnotherWithoutAffectingOtherAnchors() {
+    func testLocalKeyboardMonitorRecognizesEscapeButPassesThroughOtherKeys() throws {
+        let escape = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "\u{1b}",
+            charactersIgnoringModifiers: "\u{1b}",
+            isARepeat: false,
+            keyCode: UInt16(kVK_Escape)
+        ))
+        let returnKey = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "\r",
+            charactersIgnoringModifiers: "\r",
+            isARepeat: false,
+            keyCode: UInt16(kVK_Return)
+        ))
+
+        XCTAssertTrue(LocalKeyboardEventMonitor.isDismissalEvent(escape))
+        XCTAssertFalse(LocalKeyboardEventMonitor.isDismissalEvent(returnKey))
+    }
+
+    func testExclusivePresentationsReplacePeersWithoutAffectingOtherAnchors() {
         let controller = PresentationWindowController(keyboardMonitor: StubKeyboardEventMonitor())
 
         controller.show(event: .sample, style: .topRightToast)
@@ -382,6 +412,22 @@ final class ShortcutCoachTests: XCTestCase {
         controller.show(event: .sample, style: .decisionBanner)
 
         XCTAssertEqual(controller.activeChannels, [.topRightToast, .decisionBanner])
+        XCTAssertEqual(controller.scheduledDismissalChannels, [.topRightToast, .decisionBanner])
+
+        controller.show(event: .sample, style: .cursorHalo)
+        controller.show(event: .sample, style: .pointerCard)
+        XCTAssertEqual(controller.activeChannels, [.topRightToast, .decisionBanner, .pointerCard])
+    }
+
+    func testButtonDismissalUsesCanonicalPanelAndTaskCleanup() {
+        let controller = PresentationWindowController(keyboardMonitor: StubKeyboardEventMonitor())
+        controller.show(event: .sample, style: .decisionBanner)
+
+        let buttonAction = controller.dismissalAction(for: .decisionBanner)
+        buttonAction()
+
+        XCTAssertTrue(controller.activeChannels.isEmpty)
+        XCTAssertTrue(controller.scheduledDismissalChannels.isEmpty)
     }
 
     func testInboxUnreadAndPersistenceLifecycle() throws {
@@ -423,7 +469,7 @@ final class ShortcutCoachTests: XCTestCase {
         XCTAssertEqual(restored.selectedChannels, [.dockBadge, .sound])
     }
 
-    func testSelectingATopCenterChannelDisablesItsConflictingPeers() {
+    func testSelectingAnExclusiveChannelDisablesItsConflictingPeers() {
         let suite = "ShortcutCoachTests-overlap-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -437,6 +483,46 @@ final class ShortcutCoachTests: XCTestCase {
         XCTAssertEqual(
             preferences.selectedChannels.intersection(PresentationOverlapPolicy.topCenterChannels),
             [.decisionBanner]
+        )
+
+        preferences.set(.cursorHalo, enabled: true)
+        preferences.set(.pointerCard, enabled: true)
+        XCTAssertEqual(
+            preferences.selectedChannels.intersection(PresentationOverlapPolicy.pointerChannels),
+            [.pointerCard]
+        )
+    }
+
+    func testPersistedConflictingPresentationGroupsAreNormalizedAndRewritten() {
+        let suite = "ShortcutCoachTests-normalized-overlap-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set([
+            NotificationChannel.statusFeedback.rawValue,
+            NotificationChannel.topCenterShelf.rawValue,
+            NotificationChannel.decisionBanner.rawValue,
+            NotificationChannel.cursorHalo.rawValue,
+            NotificationChannel.pointerCard.rawValue,
+            NotificationChannel.sound.rawValue
+        ], forKey: "selectedNotificationChannels")
+
+        let preferences = AppPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.selectedChannels, [.decisionBanner, .pointerCard, .sound])
+        XCTAssertEqual(
+            defaults.array(forKey: "selectedNotificationChannels") as? [String],
+            ["decisionBanner", "pointerCard", "sound"]
+        )
+    }
+
+    func testReduceMotionSkipsStatusFeedbackDelay() {
+        XCTAssertEqual(
+            PresentationMotionPolicy.statusFeedbackDelayNanoseconds(reduceMotion: false),
+            700_000_000
+        )
+        XCTAssertEqual(
+            PresentationMotionPolicy.statusFeedbackDelayNanoseconds(reduceMotion: true),
+            0
         )
     }
 

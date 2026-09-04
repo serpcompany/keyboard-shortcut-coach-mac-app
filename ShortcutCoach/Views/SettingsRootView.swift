@@ -231,7 +231,7 @@ private struct PresentationChannelsView: View {
                 }
             }
             Section {
-                Text("Top-center Shelf, Status Feedback, and Decision Banner share one position. Enabling one automatically disables the other two.")
+                Text("Channels that share a position are exclusive. Enabling a top-center presentation disables the other top-center choices; enabling Cursor Halo or Pointer Card disables the other pointer choice.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
