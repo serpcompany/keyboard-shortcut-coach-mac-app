@@ -42,26 +42,26 @@ struct ActionCorrelator {
         return true
     }
 
-    mutating func verify(post: AccessibilitySnapshot, at timestamp: TimeInterval) -> CoachingEvent? {
+    mutating func verify(post: AccessibilitySnapshot, runtime: ChromeRuntimeState, at timestamp: TimeInterval) -> CoachingEvent? {
         guard let candidate else { return nil }
         defer { cancel() }
         guard post.bundleIdentifier == candidate.preSnapshot.bundleIdentifier else { return nil }
         let output: (String, String)?
         switch candidate.kind {
-        case .chromeNewTab where tabStates(candidate.preSnapshot, post, satisfy: { $1.tabs.count == $0.tabs.count + 1 }):
+        case .chromeNewTab where tabStates(candidate.preRuntime, runtime, satisfy: { $1.tabs.count == $0.tabs.count + 1 }):
             output = ("New Tab", ChromeShortcutCatalog.newTab)
         case .chromeCloseActiveTab(let token)
-            where tabStates(candidate.preSnapshot, post, satisfy: {
+            where tabStates(candidate.preRuntime, runtime, satisfy: {
                 $1.tabs.count == $0.tabs.count - 1 && !$1.tabs.contains(where: { $0.token == token })
             }):
             output = ("Close Tab", ChromeShortcutCatalog.closeTab)
         case .chromeSelectTab(let token, let index, let count)
-            where tabStates(candidate.preSnapshot, post, satisfy: {
+            where tabStates(candidate.preRuntime, runtime, satisfy: {
                 $1.tabs.count == count && $1.tabs.first(where: { $0.token == token })?.selected == true
             }):
             output = ("Select Tab \(index)", ChromeShortcutCatalog.selectTab(index: index))
         case .chromeSettings(let shortcut)
-            where post.chromeDestination == .settings && post.chromeSettingsShortcut == .resolved(shortcut):
+            where runtime.destination == .settings && runtime.settingsShortcut == .resolved(shortcut):
             output = ("Settings", shortcut)
         default: output = nil
         }
@@ -75,8 +75,8 @@ struct ActionCorrelator {
     }
 
     private func tabStates(
-        _ pre: AccessibilitySnapshot,
-        _ post: AccessibilitySnapshot,
+        _ pre: ChromeRuntimeState,
+        _ post: ChromeRuntimeState,
         satisfy predicate: (ChromeTabState, ChromeTabState) -> Bool
     ) -> Bool {
         guard let preTabs = pre.tabs, let postTabs = post.tabs,
@@ -86,10 +86,10 @@ struct ActionCorrelator {
 }
 
 enum ChromeClickObservation: Equatable, Sendable {
-    case down(PointerSample, AccessibilitySnapshot?)
+    case down(PointerSample, AccessibilitySnapshot?, ChromeRuntimeState)
     case dragged(PointerSample)
     case up(PointerSample, AccessibilitySnapshot?)
-    case post(AccessibilitySnapshot?, timestamp: TimeInterval)
+    case post(AccessibilitySnapshot?, ChromeRuntimeState, timestamp: TimeInterval)
     case cancelled
 }
 
@@ -113,13 +113,22 @@ struct ChromeClickDetector {
     private var ignoringGesture = false
     private(set) var needsPostObservation = false
     var hasPendingCandidate: Bool { correlator.candidate != nil }
+    var postRuntimeRequirement: ChromeRuntimeRequirement {
+        guard let candidate = correlator.candidate else { return .none }
+        if case .chromeSettings = candidate.kind { return .settings }
+        return .tabs
+    }
+
+    func runtimeRequirement(for snapshot: AccessibilitySnapshot) -> ChromeRuntimeRequirement {
+        adapter.contextRequirement(for: snapshot)
+    }
 
     mutating func receive(_ observation: ChromeClickObservation) -> ChromeClickOutcome {
         switch observation {
-        case .down(let sample, let snapshot):
+        case .down(let sample, let snapshot, let runtime):
             ignoringGesture = false
             needsPostObservation = false
-            guard let snapshot, let candidate = adapter.classify(snapshot, point: sample.location) else {
+            guard let snapshot, let candidate = adapter.classify(snapshot, runtime: runtime, point: sample.location) else {
                 correlator.cancel()
                 ignoringGesture = true
                 return .suppressed(.unrecognizedAction)
@@ -139,13 +148,13 @@ struct ChromeClickDetector {
             guard correlator.acceptsMouseUp(sample, hit: snapshot) else { return .suppressed(.invalidGesture) }
             needsPostObservation = true
             return .pending
-        case .post(let snapshot, let timestamp):
+        case .post(let snapshot, let runtime, let timestamp):
             needsPostObservation = false
             guard let snapshot else {
                 correlator.cancel()
                 return .suppressed(.missingPostObservation)
             }
-            guard let event = correlator.verify(post: snapshot, at: timestamp) else {
+            guard let event = correlator.verify(post: snapshot, runtime: runtime, at: timestamp) else {
                 return .suppressed(.postconditionFailed)
             }
             return .event(event)

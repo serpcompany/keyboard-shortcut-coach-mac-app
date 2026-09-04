@@ -51,7 +51,7 @@ Do not convert an implemented or synthetic status into a broad working claim.
 
 - The final SERP icon, menu-bar mark, and About presentation are built from the maintainer-supplied vector source.
 - Product identity is `com.serp.shortcutcoach`; deterministic coverage verifies migration from `com.serpcompany.shortcutcoach` and `co.serp.shortcutcoach`.
-- The complete suite passes 38 tests on the integrated #10 + #14 branch.
+- The complete suite passes 43 tests on the integrated branch.
 - A universal sandboxed Release build passes strict code-sign and static entitlement inspection.
 - The Mac App Store gate is blocked: after a clean Accessibility reset, the sandboxed Release cannot open Apple's Accessibility authorization warning service, while the otherwise equivalent unsandboxed control can. See [`release/evidence/sandbox-permission-gate.md`](../release/evidence/sandbox-permission-gate.md).
 - Canonical metadata and five truthful static Release screenshots validate locally. Dark menu-bar, Dock/Finder icon, Inbox access, Settings navigation, and two real presentation previews are indexed under `release/evidence`. Light menu-bar appearance remains a human check because changing the maintainer's global Appearance setting was outside the automated capture; live coaching remains blocked until the physical detector gate passes.

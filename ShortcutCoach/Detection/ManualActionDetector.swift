@@ -52,6 +52,7 @@ final class ManualActionDetector {
     private let monitor: any PointerEventMonitoring
     private let snapshotter: AccessibilitySnapshotter
     private let permissions: any DetectorPermissionProviding
+    private let chromeRuntimeReader: any ChromeRuntimeStateReading
     private let windowControlMonitor = StandardWindowControlMonitor()
     private let finderTrashMonitor = FinderTrashMonitor()
     private var chromeClickDetector = ChromeClickDetector()
@@ -75,11 +76,13 @@ final class ManualActionDetector {
     init(
         monitor: any PointerEventMonitoring = PointerEventMonitor(),
         snapshotter: AccessibilitySnapshotter = AccessibilitySnapshotter(),
-        permissions: any DetectorPermissionProviding = SystemDetectorPermissions()
+        permissions: any DetectorPermissionProviding = SystemDetectorPermissions(),
+        chromeRuntimeReader: any ChromeRuntimeStateReading = SystemChromeRuntimeStateReader()
     ) {
         self.monitor = monitor
         self.snapshotter = snapshotter
         self.permissions = permissions
+        self.chromeRuntimeReader = chromeRuntimeReader
     }
 
     func requestAccessibilityPermission() {
@@ -151,9 +154,10 @@ final class ManualActionDetector {
                     self.bufferedDragLocations.removeAll()
                     return
                 }
-                let chromeOutcome = self.chromeClickDetector.receive(.down(sample, snapshot))
-                let isChromeSettings = snapshot.bundleIdentifier.map(ChromeActionAdapter.bundleIdentifiers.contains) == true &&
-                    ChromeActionAdapter.isSettingsMenuItem(snapshot.hit)
+                let runtimeRequirement = self.chromeClickDetector.runtimeRequirement(for: snapshot)
+                let chromeRuntime = self.chromeRuntimeReader.read(pid: snapshot.pid, requirement: runtimeRequirement)
+                let chromeOutcome = self.chromeClickDetector.receive(.down(sample, snapshot, chromeRuntime))
+                let isChromeSettings = runtimeRequirement == .settings
                 if self.chromeClickDetector.hasPendingCandidate {
                     for location in self.bufferedDragLocations {
                         let drag = PointerSample(phase: .dragged, location: location, modifiers: sample.modifiers, timestamp: sample.timestamp)
@@ -193,11 +197,15 @@ final class ManualActionDetector {
                 guard let self, self.generation == currentGeneration else { return }
                 _ = self.chromeClickDetector.receive(.up(sample, upSnapshot))
                 guard self.chromeClickDetector.needsPostObservation else { return }
+                let runtimeRequirement = self.chromeClickDetector.postRuntimeRequirement
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     self.snapshotter.snapshot(at: sample.location) { [weak self] post in
                         guard let self, self.generation == currentGeneration else { return }
+                        let runtime = post.map {
+                            self.chromeRuntimeReader.read(pid: $0.pid, requirement: runtimeRequirement)
+                        } ?? .unavailable
                         if case .event(let event) = self.chromeClickDetector.receive(
-                            .post(post, timestamp: ProcessInfo.processInfo.systemUptime)
+                            .post(post, runtime, timestamp: ProcessInfo.processInfo.systemUptime)
                         ) {
                             self.onEvent?(event)
                         }
