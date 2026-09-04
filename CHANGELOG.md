@@ -4,6 +4,13 @@
 
 - Added lane-specific GitHub tags and Releases as a required step for every shipped version.
 
+## Shortcut Coach 1.0.1 — 2026-09-04
+
+- Added truthful Accessibility and Input Monitoring permission status and recovery.
+- Hardened Chrome tab and Settings coaching with verified postconditions and strict live shortcut metadata.
+- Hardened Finder drag-to-Trash and macOS window-control coaching with fail-closed trace replay.
+- Added tested Notification Center, Dock, sound, dismissal, overlap, persistence, Reduce Motion, and multi-display presentation behavior.
+
 ## Shortcut Coach Lite 1.0.0 — 2026-09-04
 
 - Submitted the sandboxed Mac App Store Lite edition for Apple review.
